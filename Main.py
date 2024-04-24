@@ -3,36 +3,28 @@ import pygame
 from pygame.math import Vector2
 from math import sqrt
 from random import shuffle
+from typing import List, Tuple
+from enum import Enum
 from Calc import *
-from typing import List
+from StateMachine import *
 
-BALL_NONE = 0
-BALL_CUE = 1
-BALL_TEAM1 = 2
-BALL_TEAM2 = 3
-BALL_BLACK = 4
 
-ball_color = [
-    (0,0,0), 
-    (255,255,255),
-    (255,255,0),
-    (255,0,0),
-    (0,0,0)
-]
 
 class Ball:
     _radius = 10
-    _overlapping = []
     _reg: List['Ball'] = []
     _fakes: List['Ball'] = []
-    _collisions = []
+    _collisions: Tuple['Ball', 'Ball'] = []
     _ball_to_remove: List['Ball'] = []
     _entered_balls: List['Ball'] = []
-    def __init__(self, pos=Vector2(0,0), fake=False, type=BALL_NONE):
+    _first_cue_touch: BallType = None
+    _potted_this_turn: List[BallType] = []
+    def __init__(self, pos=Vector2(0,0), fake=False, type=BallType.BALL_NONE):
         self.pos = pos
         self.vel = Vector2(0,0)
         self.acc = Vector2(0,0)
         self.stable = False
+        self.is_fake = fake
         if fake:
             Ball._fakes.append(self)
         else:
@@ -61,6 +53,11 @@ class Ball:
         
         self.acc *= 0
     
+    def potted(self):
+        Ball._entered_balls.append(self)
+        Ball._potted_this_turn.append(self.type)
+        Ball._reg.remove(self)
+
     def resolve_line_collision():
         for ball in Ball._reg:
             for line in Line._reg:
@@ -79,7 +76,6 @@ class Ball:
                     ball.pos -= overlap * (ball.pos - b.pos) / distance
                     Ball._collisions.append((ball, b))
 
-
     def resolve_ball_collisions():
         for ball in Ball._reg + Ball._fakes:
             for target in Ball._reg + Ball._fakes:
@@ -94,6 +90,12 @@ class Ball:
                     Ball._collisions.append((ball, target))
         
         for ball, target in Ball._collisions:
+            # check for first cue touch
+            if all([Ball._first_cue_touch is None,
+                    not ball.is_fake and not target.is_fake,
+                    (ball.type == BallType.BALL_CUE or target.type == BallType.BALL_CUE)]):
+                Ball._first_cue_touch = target.type if target.type != BallType.BALL_CUE else ball.type
+
             distance = ball.pos.distance_to(target.pos)
 
             normal = (target.pos - ball.pos) / distance
@@ -112,7 +114,7 @@ class Ball:
         Ball._collisions = []
 
     def draw(self):
-        pygame.draw.circle(win, ball_color[self.type], self.pos, Ball._radius)
+        pygame.draw.circle(win, self.type.get_color(), self.pos, Ball._radius)
         if self.stable:
             pygame.draw.circle(win, (0,255,0), self.pos, Ball._radius - 1, 1)
 
@@ -125,16 +127,44 @@ class Ball:
             Ball.resolve_ball_collisions()
         
         for ball in Ball._ball_to_remove:
-            Ball._entered_balls.append(ball)
-            Ball._reg.remove(ball)
+            ball.potted()
         Ball._ball_to_remove.clear()
+
+    def check_stability():
+        for ball in Ball._reg:
+            if not ball.stable:
+                return False
+        return True
 
     def draw_balls():
         for ball in Ball._reg:
             ball.draw()
 
+class CueBall(Ball):
+    def __init__(self, pos=Vector2(0,0)):
+        super().__init__(pos, type=BallType.BALL_CUE)
+        self.is_out = False
+
+    def new_turn(self):
+        Ball._first_cue_touch = None
+        Ball._potted_this_turn = []
+    
+    def get_first_touch(self):
+        return Ball._first_cue_touch
+
+    def get_potted_this_turn(self):
+        return Ball._potted_this_turn
+
+    def set_pos(self, pos):
+        self.pos = Vector2(pos)
+    
+    def potted(self):
+        self.is_out = True
+        Ball._potted_this_turn.append(self.type)
+        Ball._reg.remove(self)
+
 class Line:
-    _reg = []
+    _reg: List['Line'] = []
     def __init__(self, start: Vector2, end: Vector2):
         Line._reg.append(self)
         self.start = start
@@ -150,7 +180,7 @@ class Line:
             line.draw()
 
 class Hole:
-    _reg = []
+    _reg: List['Hole'] = []
     def __init__(self, pos: Vector2):
         Hole._reg.append(self)
         self.pos = pos
@@ -174,19 +204,28 @@ class Hole:
 if __name__ == '__main__':
 
     pygame.init()
-    win = pygame.display.set_mode((1280, 720))
+    win = pygame.display.set_mode((1280, 800))
     clock = pygame.time.Clock()
 
-    types = [BALL_TEAM1] * 7 + [BALL_TEAM2] * 7 + [BALL_BLACK]
+    font1 = pygame.font.SysFont('Arial', 16)
+
+    types = [BallType.BALL_SOLID] * 7 + [BallType.BALL_STRIPE] * 7
     shuffle(types)
     offx = win.get_width() / 2
     offy = win.get_height() / 2 + 150
+
+    ball_count = 0
     for i in range(6):
         for j in range(-i, i, 2):
             type = types.pop()
+            if ball_count == 4:
+                types.append(type)
+                type = BallType.BALL_BLACK
             Ball(Vector2(10 * j + offx, 10 * i * sqrt(3) + offy), type=type)
+            ball_count += 1
 
-    Ball(Vector2(win.get_width() / 2, 200), type=BALL_CUE)
+    cue_ball = CueBall(Vector2(win.get_width() / 2, 200))
+    cue_selected = False
     # Ball(Vector2(win.get_width() / 2, 400), type=BALL_TEAM1)
 
     pool_line = 350
@@ -201,12 +240,9 @@ if __name__ == '__main__':
 
     Line(Vector2(left, top + pool_d_slit), Vector2(left, center - pool_slit))
     Line(Vector2(left, bottom - pool_d_slit), Vector2(left, center + pool_slit))
-
     Line(Vector2(left + pool_d_slit, bottom), Vector2(right - pool_d_slit, bottom))
-
     Line(Vector2(right, bottom - pool_d_slit), Vector2(right, center + pool_slit))
     Line(Vector2(right, center - pool_slit), Vector2(right, top + pool_d_slit))
-
     Line(Vector2(left + pool_d_slit, top), Vector2(right - pool_d_slit, top))
 
     Hole(Vector2(left, center))
@@ -216,7 +252,7 @@ if __name__ == '__main__':
     Hole(Vector2(left, bottom))
     Hole(Vector2(right, bottom))
 
-    selected_ball: Ball = None
+    game_state = GameState()
 
     done = False
     while not done:
@@ -224,64 +260,91 @@ if __name__ == '__main__':
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 done = True
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:
-                    for b in Ball._reg:
-                        if b.pos.distance_squared_to(pygame.mouse.get_pos()) < Ball._radius **2:
-                            selected_ball = b
-            if event.type == pygame.MOUSEBUTTONUP:
-                if selected_ball:
-                    power = selected_ball.pos.distance_to(pygame.mouse.get_pos())
-                    direction = (selected_ball.pos - pygame.mouse.get_pos()).normalize()
-                    power = min(power, 150.0)
-                    selected_ball.set_vel(direction * power * 0.05)
-                selected_ball = None
+            if game_state.get_state() == State.PLAY:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        if cue_ball.pos.distance_squared_to(pygame.mouse.get_pos()) < Ball._radius **2:
+                            cue_selected = True
+                if event.type == pygame.MOUSEBUTTONUP:
+                    if cue_selected:
+                        power = cue_ball.pos.distance_to(pygame.mouse.get_pos())
+                        direction = (cue_ball.pos - pygame.mouse.get_pos()).normalize()
+                        power = min(power, 150.0)
+                        cue_ball.set_vel(direction * power * 0.05)
+                        game_state.update()
+                    cue_selected = False
+            elif game_state.get_state() == State.MOVING_CUE_BALL:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    if event.button == 1:
+                        if cue_ball.is_out:
+                            cue_ball = CueBall(pygame.mouse.get_pos())
+                        else:
+                            cue_ball.set_pos(pygame.mouse.get_pos())
+                        game_state.update()
         
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
             done = True
 
-        win.fill((0, 150, 0))
-
+        # step
         Ball.step_balls()
         for hole in Hole._reg:
             hole.step()
+        if game_state.get_state() == State.WAIT_FOR_STABLE:
+            if Ball.check_stability():
+                # determine next turn
+                game_state.potted_this_turn = cue_ball.get_potted_this_turn()
+                game_state.first_touch = cue_ball.get_first_touch()
+                game_state.update()
+                cue_ball.new_turn()
         
+        # draw
+        win.fill((0, 150, 0))
         for hole in Hole._reg:
             hole.draw()
         Ball.draw_balls()
         Line.draw_lines()
 
         # draw guides
-        if selected_ball:
+        if cue_selected:
             mouse = pygame.mouse.get_pos()
-            vec = selected_ball.pos - mouse
-            pygame.draw.line(win, (255,255,0), selected_ball.pos, selected_ball.pos + vec * 3)
+            vec = cue_ball.pos - mouse
+            pygame.draw.line(win, (255,255,0), cue_ball.pos, cue_ball.pos + vec * 3)
 
             guide_points = []
             for ball in Ball._reg:
-                if ball is selected_ball:
+                if ball is cue_ball:
                     continue
-                if vec.length == 0:
-                    continue
-                point = find_collision_centers_on_line(ball.pos, selected_ball.pos, vec.normalize(), Ball._radius)
+                try:
+                    vec_normalized = vec.normalize()
+                except ValueError as e:
+                    vec_normalized = Vector2(0,0)
+                
+                point = find_collision_centers_on_line(ball.pos, cue_ball.pos, vec_normalized, Ball._radius)
                 if not point:
                     continue
-                mouse_to_cue = selected_ball.pos - mouse
-                cue_to_guide = point - selected_ball.pos
+                mouse_to_cue = cue_ball.pos - mouse
+                cue_to_guide = point - cue_ball.pos
                 if mouse_to_cue.dot(cue_to_guide) > 0:
                     guide_points.append((point, ball))
 
             if len(guide_points) > 0:
-                point, ball = min(guide_points, key=lambda p: selected_ball.pos.distance_squared_to(p[0]))
+                point, ball = min(guide_points, key=lambda p: cue_ball.pos.distance_squared_to(p[0]))
                 pygame.draw.circle(win, (255,255,0), point, Ball._radius, 1)
                 bounce_vec = ball.pos - point
                 pygame.draw.line(win, (255,255,0), point, point + bounce_vec * 4)
+        
+        if game_state.get_state() == State.MOVING_CUE_BALL:
+            pygame.draw.circle(win, (255,255,255), pygame.mouse.get_pos(), Ball._radius, 1)
 
         # draw entered balls
         for i, ball in enumerate(Ball._entered_balls):
             pos = Vector2(right + Ball._radius * 4, Ball._radius + i * 2 * Ball._radius)
-            pygame.draw.circle(win, ball_color[ball.type], pos, Ball._radius)
+            pygame.draw.circle(win, ball.type.get_color(), pos, Ball._radius)
+
+        # temporarily display info
+        player_turn_surf = font1.render(f'{str(game_state.get_player())}: {game_state.player_ball_type[game_state.get_player()]}', True, (0,0,0))
+        win.blit(player_turn_surf, (10,10))
 
         pygame.display.update()
         clock.tick(60)
