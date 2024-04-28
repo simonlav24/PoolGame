@@ -1,3 +1,6 @@
+'''
+State machine module and rules enforecement
+'''
 
 from enum import Enum
 from typing import List
@@ -7,6 +10,12 @@ class State(Enum):
     WAIT_FOR_STABLE = 1
     MOVING_CUE_BALL = 2
     GAME_OVER = 3
+
+class Foul(Enum):
+    NONE = 0
+    TOUCHED_ILLEGAL_BALL = 1
+    POTTED_CUE = 2
+    POTTED_BLACK = 3
 
 class BallType(Enum):
     BALL_NONE = 0
@@ -64,11 +73,29 @@ class GameState:
         self.potted_this_turn: List[BallType] = []
         self.first_touch: BallType = None
 
+        self.type_potted = {
+            BallType.BALL_SOLID: 0,
+            BallType.BALL_STRIPE: 0
+        }
+        self.player_winner: Player = None
+
+    def update_potted(self, potted: List[BallType]):
+        self.potted_this_turn = potted
+        for ball in self.potted_this_turn:
+            if ball in [BallType.BALL_CUE, BallType.BALL_BLACK]:
+                continue
+            self.type_potted[ball] += 1
+
     def get_state(self) -> State:
         return self.current_state
     
     def get_player(self) -> Player:
         return self.player_turn
+
+    def is_current_player_finished(self) -> bool:
+        if not self.player_determined:
+            return False
+        return self.type_potted[self.player_ball_type[self.get_player()]] == 7
 
     def update(self):
         next_state: State = None
@@ -80,7 +107,7 @@ class GameState:
             case State.WAIT_FOR_STABLE:
                 next_state = State.PLAY
                 advance_turn = True
-                foul = False
+                foul = Foul.NONE
                 # determine players turn
                 ## player turn shall change if
                 ## 1. player didnt touch any of his balls first
@@ -89,9 +116,15 @@ class GameState:
                 print(f'{self.potted_this_turn=}')
 
                 if self.player_determined:
-                    if self.first_touch != self.player_ball_type[self.get_player()]:
+                    allowed_first_touch = [self.player_ball_type[self.get_player()]]
+                    if self.is_current_player_finished():
+                        # player potted all his balls 
+                        allowed_first_touch.append(BallType.BALL_BLACK)
+
+                    if self.first_touch not in allowed_first_touch:
                         # foul: touched illegal ball
-                        foul = True
+                        print('foul, touched illegal ball')
+                        foul = Foul.TOUCHED_ILLEGAL_BALL
 
                 if len(self.potted_this_turn) != 0:
                     # check if players not yet determined their ball type
@@ -111,17 +144,33 @@ class GameState:
 
                     if BallType.BALL_CUE in self.potted_this_turn:
                         # foul: potted cue ball
-                        foul = True
+                        print('foul, potted cue ball')
+                        foul = Foul.POTTED_CUE
                     
                     if BallType.BALL_BLACK in self.potted_this_turn:
                         next_state = State.GAME_OVER
+                        if self.is_current_player_finished():
+                            # player finished, check if white also entered
+                            if BallType.BALL_CUE in self.potted_this_turn:
+                                # white entered, other player won
+                                self.player_winner = self.get_player().next()
+                            else:
+                                # current player won
+                                self.player_winner = self.get_player()
+                        else:
+                            # foul black potted, other player won
+                            self.player_winner = self.get_player().next()
+                            foul = Foul.POTTED_BLACK
+                        print(f'{self.player_winner} Wins')
                 
-                if foul:
+                if foul != Foul.NONE:
                     next_state = State.MOVING_CUE_BALL
                     advance_turn = True
+                    if foul == Foul.POTTED_BLACK:
+                        next_state = State.GAME_OVER
                 if advance_turn:
                     self.player_turn = self.player_turn.next()
-                print(f'State: {next_state}')
+                print(f'State: {next_state}, score: {self.type_potted}')
 
             case State.MOVING_CUE_BALL:
                 next_state = State.PLAY

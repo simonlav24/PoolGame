@@ -1,3 +1,6 @@
+'''
+geometrical calculations module
+'''
 
 from pygame import Vector2
 from math import atan2, sqrt

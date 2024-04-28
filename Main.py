@@ -1,3 +1,6 @@
+'''
+Main module
+'''
 
 import pygame
 from pygame.math import Vector2
@@ -8,7 +11,26 @@ from enum import Enum
 from Calc import *
 from StateMachine import *
 
+DEBUG = False
 
+ball_color = {
+    0: (197, 171, 144),
+    1: (229, 160, 31),
+    2: (55, 57, 106),
+    3: (235, 53, 49),
+    4: (76, 51, 81),
+    5: (253, 88, 43),
+    6: (65, 119, 105),
+    7: (141, 50, 59),
+    8: (44, 42, 47),
+    9: (229, 160, 31),
+    10: (55, 57, 106),
+    11: (235, 53, 49),
+    12: (76, 51, 81),
+    13: (253, 88, 43),
+    14: (65, 119, 105),
+    15: (141, 50, 59),
+}
 
 class Ball:
     _radius = 10
@@ -19,7 +41,7 @@ class Ball:
     _entered_balls: List['Ball'] = []
     _first_cue_touch: BallType = None
     _potted_this_turn: List[BallType] = []
-    def __init__(self, pos=Vector2(0,0), fake=False, type=BallType.BALL_NONE):
+    def __init__(self, pos=Vector2(0,0), fake=False, type=BallType.BALL_NONE, number=0):
         self.pos = pos
         self.vel = Vector2(0,0)
         self.acc = Vector2(0,0)
@@ -30,6 +52,8 @@ class Ball:
         else:
             Ball._reg.append(self)
         self.type = type
+        self.number = number
+        self.create_surf()
         
     def set_vel(self, vel):
         self.vel = vel
@@ -82,8 +106,11 @@ class Ball:
                 if ball is target:
                     continue
                 distance = ball.pos.distance_to(target.pos)
+                if distance == 0:
+                    distance = 0.01
                 if distance < Ball._radius * 2:
                     overlap = 0.5 * (distance - Ball._radius * 2)
+                    
                     ball.pos -= overlap * (ball.pos - target.pos) / distance
                     target.pos += overlap * (ball.pos - target.pos) / distance
                     
@@ -97,6 +124,8 @@ class Ball:
                 Ball._first_cue_touch = target.type if target.type != BallType.BALL_CUE else ball.type
 
             distance = ball.pos.distance_to(target.pos)
+            if distance == 0:
+                distance = 0.01
 
             normal = (target.pos - ball.pos) / distance
             tangent = Vector2(-normal[1], normal[0])
@@ -113,9 +142,32 @@ class Ball:
         Ball._fakes = []
         Ball._collisions = []
 
+    def create_surf(self):
+        color = ball_color[self.number]
+        self.surf = pygame.Surface((Ball._radius * 2, Ball._radius * 2), pygame.SRCALPHA)
+        if self.number > 8:
+            # stripe
+            self.surf.fill(ball_color[0])
+            self.surf.fill(color, ((0, Ball._radius * 0.5), (self.surf.get_width(), self.surf.get_height() - Ball._radius)))
+        else:
+            # solid
+            self.surf.fill(color)
+        
+        pygame.draw.circle(self.surf, ball_color[0], (Ball._radius, Ball._radius), Ball._radius * 0.5)
+
+        if self.number != 0:
+            text = font_small.render(str(self.number), True, (0,0,0))
+            self.surf.blit(text, (Ball._radius - text.get_width() / 2, Ball._radius - text.get_height() / 2))
+
+        mask = pygame.Surface((Ball._radius * 2, Ball._radius * 2), pygame.SRCALPHA)
+        mask.fill((255,255,255,255))
+        pygame.draw.circle(mask, (0,0,0,0), (Ball._radius, Ball._radius), Ball._radius)
+        self.surf.blit(mask, (0,0), special_flags=pygame.BLEND_RGBA_SUB)
+
     def draw(self):
-        pygame.draw.circle(win, self.type.get_color(), self.pos, Ball._radius)
-        if self.stable:
+        win.blit(self.surf, self.pos - Vector2(Ball._radius, Ball._radius))
+
+        if DEBUG and self.stable:
             pygame.draw.circle(win, (0,255,0), self.pos, Ball._radius - 1, 1)
 
     def step_balls():
@@ -208,9 +260,16 @@ if __name__ == '__main__':
     clock = pygame.time.Clock()
 
     font1 = pygame.font.SysFont('Arial', 16)
+    font_small = pygame.font.SysFont('Arial', 10)
 
     types = [BallType.BALL_SOLID] * 7 + [BallType.BALL_STRIPE] * 7
     shuffle(types)
+    solid_numbers = [1, 2, 3, 4, 5, 6, 7]
+    shuffle(solid_numbers)
+    stripe_numbers = [9, 10, 11, 12, 13, 14, 15]
+    shuffle(stripe_numbers)
+    number_type = {BallType.BALL_SOLID: solid_numbers, BallType.BALL_STRIPE: stripe_numbers}
+
     offx = win.get_width() / 2
     offy = win.get_height() / 2 + 150
 
@@ -218,10 +277,13 @@ if __name__ == '__main__':
     for i in range(6):
         for j in range(-i, i, 2):
             type = types.pop()
+            number = number_type[type].pop()
             if ball_count == 4:
                 types.append(type)
+                number_type[type].append(number)
                 type = BallType.BALL_BLACK
-            Ball(Vector2(10 * j + offx, 10 * i * sqrt(3) + offy), type=type)
+                number = 8
+            Ball(Vector2(10 * j + offx, 10 * i * sqrt(3) + offy), type=type, number=number)
             ball_count += 1
 
     cue_ball = CueBall(Vector2(win.get_width() / 2, 200))
@@ -244,6 +306,32 @@ if __name__ == '__main__':
     Line(Vector2(right, bottom - pool_d_slit), Vector2(right, center + pool_slit))
     Line(Vector2(right, center - pool_slit), Vector2(right, top + pool_d_slit))
     Line(Vector2(left + pool_d_slit, top), Vector2(right - pool_d_slit, top))
+
+    d_offset = 40
+    Line(Vector2(left, top + pool_d_slit), Vector2(left - d_offset, top + pool_d_slit - d_offset))
+    Line(Vector2(left + pool_d_slit, top), Vector2(left + pool_d_slit - d_offset, top - d_offset))
+    Line(Vector2(left - d_offset, top + pool_d_slit - d_offset), Vector2(left + pool_d_slit - d_offset, top - d_offset))
+
+    Line(Vector2(right - pool_d_slit, top), Vector2(right - pool_d_slit + d_offset, top - d_offset))
+    Line(Vector2(right, top + pool_d_slit), Vector2(right + d_offset, top + pool_d_slit - d_offset))
+    Line(Vector2(right - pool_d_slit + d_offset, top - d_offset), Vector2(right + d_offset, top + pool_d_slit - d_offset))
+
+    Line(Vector2(left + pool_d_slit, bottom), Vector2(left + pool_d_slit - d_offset, bottom + d_offset))
+    Line(Vector2(left, bottom - pool_d_slit), Vector2(left - d_offset, bottom - pool_d_slit + d_offset))
+    Line(Vector2(left + pool_d_slit - d_offset, bottom + d_offset), Vector2(left - d_offset, bottom - pool_d_slit + d_offset))
+
+    Line(Vector2(right, bottom - pool_d_slit), Vector2(right + d_offset, bottom - pool_d_slit + d_offset))
+    Line(Vector2(right - pool_d_slit, bottom), Vector2(right - pool_d_slit + d_offset, bottom + d_offset))
+    Line(Vector2(right + d_offset, bottom - pool_d_slit + d_offset), Vector2(right - pool_d_slit + d_offset, bottom + d_offset))
+
+    s_offset = 25
+    Line(Vector2(right, center - pool_slit), Vector2(right + s_offset, center - pool_slit))
+    Line(Vector2(right, center + pool_slit), Vector2(right + s_offset, center + pool_slit))
+    Line(Vector2(right + s_offset, center - pool_slit), Vector2(right + s_offset, center + pool_slit))
+
+    Line(Vector2(left, center + pool_slit), Vector2(left - s_offset, center + pool_slit))
+    Line(Vector2(left, center - pool_slit), Vector2(left - s_offset, center - pool_slit))
+    Line(Vector2(left - s_offset, center + pool_slit), Vector2(left - s_offset, center - pool_slit))
 
     Hole(Vector2(left, center))
     Hole(Vector2(right, center))
@@ -293,7 +381,7 @@ if __name__ == '__main__':
         if game_state.get_state() == State.WAIT_FOR_STABLE:
             if Ball.check_stability():
                 # determine next turn
-                game_state.potted_this_turn = cue_ball.get_potted_this_turn()
+                game_state.update_potted(cue_ball.get_potted_this_turn())
                 game_state.first_touch = cue_ball.get_first_touch()
                 game_state.update()
                 cue_ball.new_turn()
@@ -339,8 +427,8 @@ if __name__ == '__main__':
 
         # draw entered balls
         for i, ball in enumerate(Ball._entered_balls):
-            pos = Vector2(right + Ball._radius * 4, Ball._radius + i * 2 * Ball._radius)
-            pygame.draw.circle(win, ball.type.get_color(), pos, Ball._radius)
+            pos = Vector2(right + Ball._radius * 8, Ball._radius + i * 2 * Ball._radius)
+            win.blit(ball.surf, pos)
 
         # temporarily display info
         player_turn_surf = font1.render(f'{str(game_state.get_player())}: {game_state.player_ball_type[game_state.get_player()]}', True, (0,0,0))
