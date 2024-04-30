@@ -81,10 +81,10 @@ class GameState:
 
     def update_potted(self, potted: List[BallType]):
         self.potted_this_turn = potted
-        for ball in self.potted_this_turn:
-            if ball in [BallType.BALL_CUE, BallType.BALL_BLACK]:
+        for ball_tpye in self.potted_this_turn:
+            if ball_tpye in [BallType.BALL_CUE, BallType.BALL_BLACK]:
                 continue
-            self.type_potted[ball] += 1
+            self.type_potted[ball_tpye] += 1
 
     def get_state(self) -> State:
         return self.current_state

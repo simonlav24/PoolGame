@@ -3,6 +3,7 @@ from pygame.math import Vector2
 from StateMachine import GameState, BallType, Player, State
 from Physics import Ball, Hole
 from Calc import check_line_circle_collision
+from typing import List
 
 # Todo:
 ### a function that calculates the angle to force a target ball in target angle
@@ -10,7 +11,9 @@ from Calc import check_line_circle_collision
 win: pygame.surface.Surface = None
 
 class PlayerCpu:
-    def __init__(self, game_state: GameState):
+    _reg: List['PlayerCpu'] = []
+    def __init__(self, game_state: GameState, player: Player):
+        PlayerCpu._reg.append(self)
         self.game_state = game_state
         self.ball_type = BallType.BALL_NONE
 
@@ -18,6 +21,8 @@ class PlayerCpu:
         self.best_target = []
         self.timer = 0
         self.determined = False
+        self.player = player
+        self.debug = True
 
     def get_closest_holes_to_ball(self, ball: Ball, amount=2) -> Hole:
         distances = []
@@ -75,11 +80,11 @@ class PlayerCpu:
         self.best_target = None
 
         if not self.determined and self.game_state.player_determined:
-            self.ball_type = self.game_state.player_ball_type[Player.PLAYER_2]
+            self.ball_type = self.game_state.player_ball_type[self.player]
             self.determined = True
 
         # check for current turn
-        if not (self.game_state.get_state() == State.PLAY and self.game_state.get_player() == Player.PLAYER_2):
+        if not (self.game_state.get_state() == State.PLAY and self.game_state.get_player() == self.player):
             return
         
         if self.determined and self.game_state.is_current_player_finished():
@@ -88,6 +93,9 @@ class PlayerCpu:
         for ball in Ball._reg:
             if self.determined:
                 if self.ball_type != ball.type:
+                    continue
+            else:
+                if ball.type == BallType.BALL_BLACK:
                     continue
             if ball is Ball._cue_ball:
                 continue
@@ -122,15 +130,16 @@ class PlayerCpu:
                 print('cant play')
 
     def draw(self):
-        return
+        if not self.debug:
+            return
         for target in self.targets:
             pygame.draw.circle(win, (0,255,0), target[0], 4)
             pygame.draw.circle(win, (0,255,0), target[1], 4)
             pygame.draw.line(win, (0,255,0), target[0], target[1])
         if self.best_target:
             pygame.draw.circle(win, (0,0,255), self.best_target[0].pos, 4)
-            pygame.draw.circle(win, (0,0,255), self.best_target[1].pos, 4)
-            pygame.draw.line(win, (0,0,255), self.best_target[0].pos, self.best_target[1].pos)
+            pygame.draw.circle(win, (0,0,255), self.best_target[1].target_pos, 4)
+            pygame.draw.line(win, (0,0,255), self.best_target[0].pos, self.best_target[1].target_pos)
 
 
     

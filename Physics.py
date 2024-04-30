@@ -3,6 +3,7 @@ import pygame
 from pygame.math import Vector2
 from typing import List, Tuple
 from StateMachine import BallType
+from Calc import find_collision_centers_on_line
 
 font_small = None
 win = None
@@ -36,6 +37,7 @@ class Ball:
     _first_cue_touch: BallType = None
     _potted_this_turn: List[BallType] = []
     _cue_ball: 'Ball' = None
+    _TEMP_col_guides = []
     def __init__(self, pos=Vector2(0,0), fake=False, type=BallType.BALL_NONE, number=0):
         self.pos = pos
         self.vel = Vector2(0,0)
@@ -49,7 +51,17 @@ class Ball:
         self.type = type
         self.number = number
         self.create_surf()
-        
+    
+    def __str__(self):
+        if self.is_fake:
+            return f'Fake_Ball'
+        elif self.number == 0:
+            return 'Cue_Ball'
+        return f'Ball_{self.number}'
+
+    def __repr__(self):
+        return str(self)
+
     def set_vel(self, vel):
         self.vel = vel
         self.stable = False
@@ -96,18 +108,20 @@ class Ball:
                     Ball._collisions.append((ball, b))
 
     def resolve_ball_collisions():
-        for ball in Ball._reg + Ball._fakes:
-            for target in Ball._reg + Ball._fakes:
+        for ball in Ball._reg:
+            for target in Ball._reg:
                 if ball is target:
                     continue
                 distance = ball.pos.distance_to(target.pos)
                 if distance == 0:
                     distance = 0.01
                 if distance < Ball._radius * 2:
-                    overlap = 0.5 * (distance - Ball._radius * 2)
-                    
-                    ball.pos -= overlap * (ball.pos - target.pos) / distance
-                    target.pos += overlap * (ball.pos - target.pos) / distance
+                    Ball._TEMP_col_guides.append((ball.pos.copy(), target.pos.copy()))
+                    if True:
+                        # resolve static collision by overlap
+                        overlap = 0.5 * (distance - Ball._radius * 2)
+                        ball.pos -= overlap * (ball.pos - target.pos) / distance
+                        target.pos += overlap * (ball.pos - target.pos) / distance
                     
                     Ball._collisions.append((ball, target))
         
@@ -162,9 +176,6 @@ class Ball:
     def draw(self):
         win.blit(self.surf, self.pos - Vector2(Ball._radius, Ball._radius))
 
-        if False:
-            pygame.draw.circle(win, (0,255,0), self.pos, Ball._radius - 1, 1)
-
     def step_balls():
         for i in range(5):
             for ball in Ball._reg:
@@ -173,9 +184,9 @@ class Ball:
             Ball.resolve_line_collision()
             Ball.resolve_ball_collisions()
         
-        for ball in Ball._ball_to_remove:
-            ball.potted()
-        Ball._ball_to_remove.clear()
+            for ball in Ball._ball_to_remove:
+                ball.potted()
+            Ball._ball_to_remove.clear()
 
     def check_stability():
         for ball in Ball._reg:
@@ -249,4 +260,70 @@ class Hole:
     
     def draw(self):
         pygame.draw.circle(win, (0,0,0), self.pos, Ball._radius * 1.3)
-        # pygame.draw.circle(win, (0,255,0), self.target_pos, 5)
+
+class Guide:
+    def __init__(self):
+        self.powering = False
+        self.aim_vec: Vector2 = None
+        self.power_origin: Vector2 = None
+        self.power = 0.0
+    
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:
+                self.power_origin = Vector2(pygame.mouse.get_pos())
+                self.aim_vec = pygame.mouse.get_pos() - Ball._cue_ball.pos
+                self.powering = True
+        if event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1:
+                power_end = pygame.mouse.get_pos()
+                self.power = min(self.power_origin.distance_to(power_end), 400.0) / 400.0
+                self.powering = False
+
+    def get_aim_power(self) -> Tuple[Vector2, float]:
+        result = (self.aim_vec.normalize(), self.power * 150.0)
+        return result
+    
+    def draw(self):
+        cue_ball = Ball._cue_ball
+        target = pygame.mouse.get_pos()
+        if self.powering:
+            target = self.power_origin
+        vec = target - cue_ball.pos
+
+        guide_points = []
+        for ball in Ball._reg:
+            if ball is cue_ball:
+                continue
+            try:
+                vec_normalized = vec.normalize()
+            except ValueError as e:
+                vec_normalized = Vector2(0,0)
+            
+            point = find_collision_centers_on_line(ball.pos, cue_ball.pos, vec_normalized, Ball._radius)
+            if not point:
+                continue
+            cue_to_mouse = target - cue_ball.pos
+            cue_to_guide = point - cue_ball.pos
+            if cue_to_mouse.dot(cue_to_guide) > 0:
+                guide_points.append((point, ball))
+
+        power = 0.0
+        if self.powering:
+            power = min(target.distance_to(pygame.mouse.get_pos()), 400.0) / 400.0
+
+        draw_cue(vec_normalized, power)
+
+        if len(guide_points) > 0:
+            point, ball = min(guide_points, key=lambda p: cue_ball.pos.distance_squared_to(p[0]))
+            pygame.draw.circle(win, (255,255,0), point, Ball._radius, 1)
+            bounce_vec = ball.pos - point
+            pygame.draw.line(win, (255,255,0), point, point + bounce_vec * 4)
+        
+            pygame.draw.line(win, (255,255,0), cue_ball.pos, point)
+
+def draw_cue(dir, power):
+    # dir should be normalized
+    s = Ball._cue_ball.pos - dir * Ball._radius - dir * power * 100
+    e = Ball._cue_ball.pos - dir * Ball._radius * 20 - dir * power * 100
+    pygame.draw.line(win, (82, 50, 16), s, e, 3)
