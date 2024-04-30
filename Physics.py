@@ -35,6 +35,7 @@ class Ball:
     _entered_balls: List['Ball'] = []
     _first_cue_touch: BallType = None
     _potted_this_turn: List[BallType] = []
+    _cue_ball: 'Ball' = None
     def __init__(self, pos=Vector2(0,0), fake=False, type=BallType.BALL_NONE, number=0):
         self.pos = pos
         self.vel = Vector2(0,0)
@@ -189,6 +190,7 @@ class Ball:
 class CueBall(Ball):
     def __init__(self, pos=Vector2(0,0)):
         super().__init__(pos, type=BallType.BALL_CUE)
+        Ball._cue_ball = self
         self.is_out = False
 
     def new_turn(self):
@@ -227,9 +229,10 @@ class Line:
 
 class Hole:
     _reg: List['Hole'] = []
-    def __init__(self, pos: Vector2):
+    def __init__(self, pos: Vector2, target_offset: Vector2):
         Hole._reg.append(self)
         self.pos = pos
+        self.target_pos = pos + target_offset
 
     def step(self):
         for ball in Ball._reg:
@@ -246,3 +249,4 @@ class Hole:
     
     def draw(self):
         pygame.draw.circle(win, (0,0,0), self.pos, Ball._radius * 1.3)
+        # pygame.draw.circle(win, (0,255,0), self.target_pos, 5)

@@ -6,11 +6,12 @@ import pygame
 from pygame.math import Vector2
 from math import sqrt
 from random import shuffle
-from typing import List, Tuple
 import Physics
 from Physics import Ball, Line, Hole, CueBall
 from Calc import *
 from StateMachine import *
+import Cpu
+from Cpu import PlayerCpu
 
 DEBUG = False
 
@@ -52,7 +53,6 @@ if __name__ == '__main__':
 
     cue_ball = CueBall(Vector2(win.get_width() / 2, 200))
     cue_selected = False
-    # Ball(Vector2(win.get_width() / 2, 400), type=BALL_TEAM1)
 
     pool_line = 350
     pool_slit = 25
@@ -64,6 +64,7 @@ if __name__ == '__main__':
     bottom = win.get_height() / 2 + pool_line
     center = win.get_height() / 2
 
+    # table lines
     Line(Vector2(left, top + pool_d_slit), Vector2(left, center - pool_slit))
     Line(Vector2(left, bottom - pool_d_slit), Vector2(left, center + pool_slit))
     Line(Vector2(left + pool_d_slit, bottom), Vector2(right - pool_d_slit, bottom))
@@ -71,6 +72,7 @@ if __name__ == '__main__':
     Line(Vector2(right, center - pool_slit), Vector2(right, top + pool_d_slit))
     Line(Vector2(left + pool_d_slit, top), Vector2(right - pool_d_slit, top))
 
+    # pot lines
     d_offset = 40
     Line(Vector2(left, top + pool_d_slit), Vector2(left - d_offset, top + pool_d_slit - d_offset))
     Line(Vector2(left + pool_d_slit, top), Vector2(left + pool_d_slit - d_offset, top - d_offset))
@@ -96,15 +98,19 @@ if __name__ == '__main__':
     Line(Vector2(left, center + pool_slit), Vector2(left - s_offset, center + pool_slit))
     Line(Vector2(left, center - pool_slit), Vector2(left - s_offset, center - pool_slit))
     Line(Vector2(left - s_offset, center + pool_slit), Vector2(left - s_offset, center - pool_slit))
-
-    Hole(Vector2(left, center))
-    Hole(Vector2(right, center))
-    Hole(Vector2(left, top))
-    Hole(Vector2(right, top))
-    Hole(Vector2(left, bottom))
-    Hole(Vector2(right, bottom))
+    
+    hole_diagonal_offset = 20
+    hole_horizontal_offset = 10
+    Hole(Vector2(left, center), Vector2(hole_horizontal_offset, 0))
+    Hole(Vector2(right, center), Vector2(-hole_horizontal_offset, 0))
+    Hole(Vector2(left, top), Vector2(hole_diagonal_offset, hole_diagonal_offset))
+    Hole(Vector2(right, top), Vector2(-hole_diagonal_offset, hole_diagonal_offset))
+    Hole(Vector2(left, bottom), Vector2(hole_diagonal_offset, -hole_diagonal_offset))
+    Hole(Vector2(right, bottom), Vector2(-hole_diagonal_offset, -hole_diagonal_offset))
 
     game_state = GameState()
+    Cpu.win = win
+    cpu = PlayerCpu(game_state)
 
     done = False
     while not done:
@@ -149,6 +155,7 @@ if __name__ == '__main__':
                 game_state.first_touch = cue_ball.get_first_touch()
                 game_state.update()
                 cue_ball.new_turn()
+        cpu.step()
         
         # draw
         win.fill((0, 150, 0))
@@ -156,6 +163,7 @@ if __name__ == '__main__':
             hole.draw()
         Ball.draw_balls()
         Line.draw_lines()
+        cpu.draw()
 
         # draw guides
         if cue_selected:
