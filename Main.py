@@ -6,11 +6,13 @@ import pygame
 from pygame.math import Vector2
 from random import shuffle
 import Physics
-from Physics import Ball, Line, Hole, CueBall, Guide
+from Physics import Ball, Line, Hole, CueBall
 from Calc import *
 from StateMachine import *
 import Cpu
 from Cpu import PlayerCpu
+import Guide
+from Guide import AimGuide
 
 DEBUG = False
 
@@ -34,7 +36,7 @@ if __name__ == '__main__':
     shuffle(stripe_numbers)
     number_type = {BallType.BALL_SOLID: solid_numbers, BallType.BALL_STRIPE: stripe_numbers}
 
-    offx = win.get_width() / 2
+    offx = win.get_width() / 2 + Ball._radius
     offy = win.get_height() / 2 + 150
 
     ball_count = 0
@@ -107,12 +109,13 @@ if __name__ == '__main__':
     Hole(Vector2(left, bottom), Vector2(hole_diagonal_offset, -hole_diagonal_offset))
     Hole(Vector2(right, bottom), Vector2(-hole_diagonal_offset, -hole_diagonal_offset))
 
-    guide = Guide()
     game_state = GameState()
     Cpu.win = win
+    Guide.win = win
 
     # cpu1 = PlayerCpu(game_state, Player.PLAYER_1)
     cpu2 = PlayerCpu(game_state, Player.PLAYER_2)
+    guide = AimGuide(game_state, [cpu.player for cpu in PlayerCpu._reg])
 
     done = False
     while not done:
@@ -127,9 +130,10 @@ if __name__ == '__main__':
                         cpu.debug = not cpu.debug
             if game_state.get_state() == State.PLAY:
                 if event.type == pygame.MOUSEBUTTONUP:
-                    direction, power = guide.get_aim_power()
-                    cue_ball.set_vel(direction * power * 0.05)
-                    game_state.update()
+                    if event.button == 1:
+                        direction, power = guide.get_aim_power()
+                        cue_ball.strike(direction, power)
+                        game_state.update()
             elif game_state.get_state() == State.MOVING_CUE_BALL:
                 if event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
@@ -157,6 +161,8 @@ if __name__ == '__main__':
         
         for cpu in PlayerCpu._reg:
             cpu.step()
+            if cpu.player == game_state.get_player():
+                guide.set_aim(cpu.get_direction())
         
         # draw
         win.fill((0, 150, 0))

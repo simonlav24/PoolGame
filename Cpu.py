@@ -4,11 +4,13 @@ from StateMachine import GameState, BallType, Player, State
 from Physics import Ball, Hole
 from Calc import check_line_circle_collision
 from typing import List
+from random import uniform
 
 # Todo:
 ### a function that calculates the angle to force a target ball in target angle
 
 win: pygame.surface.Surface = None
+brake_random = Vector2(uniform(-10, 10),100)
 
 class PlayerCpu:
     _reg: List['PlayerCpu'] = []
@@ -23,6 +25,9 @@ class PlayerCpu:
         self.determined = False
         self.player = player
         self.debug = True
+
+        self.direction: Vector2 = None
+        self.power = 1
 
     def get_closest_holes_to_ball(self, ball: Ball, amount=2) -> Hole:
         distances = []
@@ -74,19 +79,11 @@ class PlayerCpu:
             return False
         return True
 
-    def step(self): 
-        self.targets = []
+    def get_direction(self):
+        return self.direction
+
+    def step_shoot_ball(self):
         available_balls_holes = []
-        self.best_target = None
-
-        if not self.determined and self.game_state.player_determined:
-            self.ball_type = self.game_state.player_ball_type[self.player]
-            self.determined = True
-
-        # check for current turn
-        if not (self.game_state.get_state() == State.PLAY and self.game_state.get_player() == self.player):
-            return
-        
         if self.determined and self.game_state.is_current_player_finished():
             self.ball_type = BallType.BALL_BLACK
         
@@ -112,22 +109,56 @@ class PlayerCpu:
         
         if len(available_balls_holes) > 0:
             self.best_target = max(available_balls_holes, key=lambda x: x[2])
+        
+        if self.best_target:
+            ball = self.best_target[0]
+            hole = self.best_target[1]
+            ghost_pos = self.get_ghost_position(ball, hole)
+            self.direction = (ghost_pos - Ball._cue_ball.pos).normalize()
+            self.power = 0.4
+            return True
+        return False
 
-        # play turn
+    def step_brake_shoot(self):
+        if not self.game_state.round_count == 0:
+            return False
+        
+        self.direction = brake_random
+        self.power = 1.0
+        return True
+
+    def step(self): 
+        self.targets = []
+        self.best_target = None
+
+        if not self.determined and self.game_state.player_determined:
+            self.ball_type = self.game_state.player_ball_type[self.player]
+            self.determined = True
+
+        # check for current turn
+        if not (self.game_state.get_state() == State.PLAY and self.game_state.get_player() == self.player):
+            return
+
+        if self.step_shoot_ball():
+            self.play_turn()
+            return
+        
+        if self.step_brake_shoot():
+            self.play_turn()
+            return
+
+        self.direction = None
+        self.play_turn()
+
+    def play_turn(self):
         self.timer += 1
         if self.timer >= 60 * 3:
             self.timer = 0
-            if self.best_target:
-                ball = self.best_target[0]
-                hole = self.best_target[1]
-
-                ghost_pos = self.get_ghost_position(ball, hole)
-                direction = (ghost_pos - Ball._cue_ball.pos).normalize()
-                power = 50
-                Ball._cue_ball.set_vel(direction * power * 0.05)
-                self.game_state.update()
-            else:
+            if self.direction == None:
                 print('cant play')
+                return
+            Ball._cue_ball.strike(self.direction, self.power)
+            self.game_state.update()
 
     def draw(self):
         if not self.debug:

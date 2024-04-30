@@ -78,6 +78,7 @@ class GameState:
             BallType.BALL_STRIPE: 0
         }
         self.player_winner: Player = None
+        self.round_count = 0
 
     def update_potted(self, potted: List[BallType]):
         self.potted_this_turn = potted
@@ -171,6 +172,7 @@ class GameState:
                 if advance_turn:
                     self.player_turn = self.player_turn.next()
                 print(f'State: {next_state}, score: {self.type_potted}')
+                self.round_count += 1
 
             case State.MOVING_CUE_BALL:
                 next_state = State.PLAY
