@@ -3,7 +3,7 @@ geometrical calculations module
 '''
 
 from pygame import Vector2
-from math import atan2, sqrt
+from math import atan2, sqrt, radians, tan
 
 def find_collision_centers_on_line(point: Vector2, point_on_line: Vector2, line_direction: Vector2, radius: float):
     # find distance between line and point. direction must be normalized
@@ -57,7 +57,34 @@ def check_line_circle_collision(point_a: Vector2, point_b: Vector2, circle_cente
         return True
     return False
 
+def find_collision_position_ball_to_line(p_a: Vector2, p_b: Vector2, p_c: Vector2, p_d: Vector2, radius: float):
+    ### not working
+    # p_a to p_b is the line segment 
+    # p_c to p_d is the ray
+    line1_vec = p_b - p_a
+    line2_vec = p_d - p_c
 
+    ray = p_c + (p_d - p_c) * 3000.0
 
+    angle = -radians(line1_vec.angle_to(line2_vec))
+    distance_on_line1 = radius / tan(angle)
+
+    # find intersection
+    x1, y1 = p_a.x, p_a.y
+    x2, y2 = p_b.x, p_b.y
+    x3, y3 = p_c.x, p_c.y
+    x4, y4 = ray.x, ray.y
+
+    u_nom = (x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)
+    u_dem = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4)
+    if u_dem == 0:
+        return None
+    u = u_nom / u_dem
+
+    intersection = p_a + u * (line1_vec)
+    tangent = intersection - distance_on_line1 * line1_vec.normalize()
+    tangent_vec = Vector2(-line1_vec.y, line1_vec.x)
+    collision_point = tangent + radius * tangent_vec.normalize()
+    return collision_point
 
 

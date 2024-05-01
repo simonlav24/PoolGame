@@ -107,14 +107,12 @@ if __name__ == '__main__':
     Hole(Vector2(center, top - vertical_adjust), Vector2(0, hole_vertical_offset), hole_radius)
     Hole(Vector2(center, bottom + vertical_adjust), Vector2(0, -hole_vertical_offset), hole_radius)
 
-    bg_sprite = pygame.transform.scale_by(pygame.image.load(r'./tableSprite.png'), 0.6)
-
     game_state = GameState()
     Cpu.win = win
     Guide.win = win
 
     # cpu1 = PlayerCpu(game_state, Player.PLAYER_1)
-    cpu2 = PlayerCpu(game_state, Player.PLAYER_2, dificulty=1)
+    cpu2 = PlayerCpu(game_state, Player.PLAYER_2, dificulty=3)
 
     guide = AimGuide(game_state, [cpu.player for cpu in PlayerCpu._reg])
 
@@ -173,7 +171,7 @@ if __name__ == '__main__':
         
         # draw
         win.fill((0, 150, 0))
-        # win.blit(bg_sprite, (win.get_width() / 2 - bg_sprite.get_width() / 2, win.get_height() / 2 - bg_sprite.get_height() / 2))
+
         for hole in Hole._reg:
             hole.draw()
         Ball.draw_balls()

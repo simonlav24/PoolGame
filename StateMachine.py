@@ -149,6 +149,7 @@ class GameState:
                     
                     if BallType.BALL_BLACK in self.potted_this_turn:
                         next_state = State.GAME_OVER
+                        foul = Foul.NONE
                         if self.is_current_player_finished():
                             # player finished, check if white also entered
                             if BallType.BALL_CUE in self.potted_this_turn:

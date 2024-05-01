@@ -1,8 +1,8 @@
 
 from StateMachine import GameState, State, Player
 from typing import Tuple, List
-from Physics import Ball
-from Calc import find_collision_centers_on_line
+from Physics import Ball, Line
+from Calc import find_collision_centers_on_line, find_collision_position_ball_to_line
 import pygame
 from pygame.math import Vector2
 
@@ -50,6 +50,7 @@ class AimGuide:
         vec = target - cue_ball.pos
 
         guide_points = []
+        # test guides with balls
         for ball in Ball._reg:
             if ball is cue_ball:
                 continue
@@ -70,7 +71,7 @@ class AimGuide:
         if self.powering:
             power = min(target.distance_to(pygame.mouse.get_pos()), 400.0) / 400.0
 
-        draw_cue(vec_normalized, power)
+        draw_cue(vec_normalized, power)                
 
         if len(guide_points) > 0:
             point, ball = min(guide_points, key=lambda p: cue_ball.pos.distance_squared_to(p[0]))
