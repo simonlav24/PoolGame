@@ -4,7 +4,7 @@ from StateMachine import GameState, BallType, Player, State
 from Physics import Ball, Hole
 from Calc import check_line_circle_collision
 from typing import List
-from random import uniform
+from random import uniform, randint
 
 # Todo:
 ### a function that calculates the angle to force a target ball in target angle
@@ -14,7 +14,7 @@ brake_random = Vector2(uniform(-10, 10),100)
 
 class PlayerCpu:
     _reg: List['PlayerCpu'] = []
-    def __init__(self, game_state: GameState, player: Player):
+    def __init__(self, game_state: GameState, player: Player, dificulty = 3):
         PlayerCpu._reg.append(self)
         self.game_state = game_state
         self.ball_type = BallType.BALL_NONE
@@ -25,6 +25,7 @@ class PlayerCpu:
         self.determined = False
         self.player = player
         self.debug = True
+        self.dificulty = dificulty # range = [1, 2, 3]
 
         self.direction: Vector2 = None
         self.power = 1
@@ -150,6 +151,13 @@ class PlayerCpu:
         self.direction = None
         self.play_turn()
 
+    def adjust_dificulty(self):
+        if not randint(1, 3) <= self.dificulty:
+            # bad shot
+            adjust_vec = Vector2(uniform(-0.5,0.5), uniform(-0.5,0.5))
+            self.direction += adjust_vec
+            print('bad shot')
+
     def play_turn(self):
         self.timer += 1
         if self.timer >= 60 * 3:
@@ -157,6 +165,7 @@ class PlayerCpu:
             if self.direction == None:
                 print('cant play')
                 return
+            self.adjust_dificulty()
             Ball._cue_ball.strike(self.direction, self.power)
             self.game_state.update()
 

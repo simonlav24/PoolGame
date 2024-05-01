@@ -3,6 +3,7 @@ import pygame
 from pygame.math import Vector2
 from typing import List, Tuple
 from StateMachine import BallType
+import time
 
 font_small = None
 win = None
@@ -27,7 +28,7 @@ ball_color = {
 }
 
 class Ball:
-    _radius = 10
+    _radius = 13
     _reg: List['Ball'] = []
     _fakes: List['Ball'] = []
     _collisions: Tuple['Ball', 'Ball'] = []
@@ -63,14 +64,15 @@ class Ball:
 
     def set_vel(self, vel):
         self.vel = vel
-        self.stable = False
+        if self.vel != Vector2(0,0):
+            self.stable = False
     
     def set_acc(self, acc):
         self.acc = acc
 
     def step(self):
         self.vel += self.acc
-        self.vel *= 0.997
+        self.vel *= 0.9975
         self.pos += self.vel
 
         if abs(self.vel[0]) < 0.01:
@@ -98,11 +100,11 @@ class Ball:
                 t = max(0, min(edge_length, (l1[0] * l2[0] + l1[1] * l2[1]))) / edge_length
                 closest = line.start + t * l1
                 distance = ball.pos.distance_to(closest)
-                if distance <= Ball._radius * 2:
+                if distance <= Ball._radius + Line._radius:
                     b = Ball(closest, fake=True)
                     b.vel = -ball.vel
 
-                    overlap = 1.0 * (distance - Ball._radius * 2)
+                    overlap = 1.0 * (distance - (Ball._radius + Line._radius))
                     ball.pos -= overlap * (ball.pos - b.pos) / distance
                     Ball._collisions.append((ball, b))
 
@@ -114,11 +116,14 @@ class Ball:
                 distance = ball.pos.distance_to(target.pos)
                 if distance == 0:
                     distance = 0.01
+                second_radius = Ball._radius
+                if ball.is_fake or target.is_fake:
+                    second_radius = Line._radius
                 if distance < Ball._radius * 2:
                     Ball._TEMP_col_guides.append((ball.pos.copy(), target.pos.copy()))
                     if True:
                         # resolve static collision by overlap
-                        overlap = 0.5 * (distance - Ball._radius * 2)
+                        overlap = 0.5 * (distance - Ball._radius - second_radius)
                         ball.pos -= overlap * (ball.pos - target.pos) / distance
                         target.pos += overlap * (ball.pos - target.pos) / distance
                     
@@ -143,7 +148,7 @@ class Ball:
 
             dot_normal1 = ball.vel[0] * normal[0] + ball.vel[1] * normal[1]
             dot_normal2 = target.vel[0] * normal[0] + target.vel[1] * normal[1]
-
+            
             ball.set_vel(tangent * dot_tangent1 + normal * dot_normal2)
             target.set_vel(tangent * dot_tangent2 + normal * dot_normal1)
         
@@ -226,15 +231,17 @@ class CueBall(Ball):
 
 class Line:
     _reg: List['Line'] = []
+    _radius = 5
     def __init__(self, start: Vector2, end: Vector2):
         Line._reg.append(self)
         self.start = start
         self.end = end
 
     def draw(self):
-        pygame.draw.line(win, (0,0,0), self.start, self.end, Ball._radius * 2)
-        pygame.draw.circle(win, (0,0,0), self.start, Ball._radius)
-        pygame.draw.circle(win, (0,0,0), self.end, Ball._radius)
+        pygame.draw.line(win, (0,0,0), self.start, self.end, Line._radius * 2)
+        pygame.draw.circle(win, (0,0,0), self.start, Line._radius)
+        pygame.draw.circle(win, (0,0,0), self.end, Line._radius)
+        # pygame.draw.line(win, (255,0,0), self.start, self.end)
 
     def draw_lines():
         for line in Line._reg:
@@ -242,24 +249,29 @@ class Line:
 
 class Hole:
     _reg: List['Hole'] = []
-    def __init__(self, pos: Vector2, target_offset: Vector2):
+    def __init__(self, pos: Vector2, target_offset: Vector2, radius: float):
         Hole._reg.append(self)
+        self.radius = radius
         self.pos = pos
         self.target_pos = pos + target_offset
 
     def step(self):
         for ball in Ball._reg:
             distance = ball.pos.distance_to(self.pos)
-            if distance > 2 * Ball._radius:
+            if distance > self.radius + 0.5 * Ball._radius:
                 continue
 
             # apply force
             force = (self.pos - ball.pos).normalize()
-            ball.set_acc((Ball._radius / distance **2) * force)
+            ball.set_acc((self.radius / distance **2) * force)
 
-            if distance < Ball._radius:
+            if distance < self.radius * 0.8:
                 Ball._ball_to_remove.append(ball)
     
     def draw(self):
-        pygame.draw.circle(win, (0,0,0), self.pos, Ball._radius * 1.3)
+        pygame.draw.circle(win, (0,0,0), self.pos, self.radius)
+        pygame.draw.circle(win, (255,0,0), self.pos, self.radius, 1)
+        draw_target = False
+        if draw_target:
+            pygame.draw.circle(win, (0,255,0), self.target_pos, 5)
 

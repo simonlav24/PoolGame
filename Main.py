@@ -28,6 +28,45 @@ if __name__ == '__main__':
     Physics.win = win
     Physics.font_small = font_small
 
+    
+    # build table
+    pool_line = 450
+    pool_slit = 29
+    pool_d_slit = 36
+
+    left = win.get_width() / 2 - pool_line
+    right = win.get_width() / 2 + pool_line
+    top = win.get_height() / 2 - pool_line / 2
+    bottom = win.get_height() / 2 + pool_line / 2
+    center = win.get_width() / 2
+
+    # table lines
+    Line(Vector2(left, top + pool_d_slit), Vector2(left, bottom - pool_d_slit))
+    Line(Vector2(right, top + pool_d_slit), Vector2(right, bottom - pool_d_slit))
+    Line(Vector2(left + pool_d_slit, top), Vector2(center - pool_slit, top))
+    Line(Vector2(center + pool_slit, top), Vector2(right - pool_d_slit, top))
+    Line(Vector2(left + pool_d_slit, bottom), Vector2(center - pool_slit, bottom))
+    Line(Vector2(center + pool_slit, bottom), Vector2(right - pool_d_slit, bottom))
+
+    slit_offset = 45
+    slit_d_offset = 50
+    slit_center_offset = 10
+    Line(Vector2(left, top + pool_d_slit), Vector2(left - slit_d_offset, top + pool_d_slit - slit_d_offset))
+    Line(Vector2(left + pool_d_slit, top), Vector2(left + pool_d_slit - slit_d_offset, top - slit_d_offset))
+    Line(Vector2(right, top + pool_d_slit), Vector2(right + slit_d_offset, top + pool_d_slit - slit_d_offset))
+    Line(Vector2(right - pool_d_slit, top), Vector2(right - pool_d_slit + slit_d_offset, top - slit_d_offset))
+
+    Line(Vector2(left, bottom - pool_d_slit), Vector2(left - slit_d_offset, bottom - pool_d_slit + slit_d_offset))
+    Line(Vector2(left + pool_d_slit, bottom), Vector2(left + pool_d_slit - slit_d_offset, bottom + slit_d_offset))
+    Line(Vector2(right, bottom - pool_d_slit), Vector2(right + slit_d_offset, bottom - pool_d_slit + slit_d_offset))
+    Line(Vector2(right - pool_d_slit, bottom), Vector2(right - pool_d_slit + slit_d_offset, bottom + slit_d_offset))
+
+    Line(Vector2(center - pool_slit, top), Vector2(center - pool_slit + slit_center_offset, top - slit_offset))
+    Line(Vector2(center + pool_slit, top), Vector2(center + pool_slit - slit_center_offset, top - slit_offset))
+    Line(Vector2(center - pool_slit, bottom), Vector2(center - pool_slit + slit_center_offset, bottom + slit_offset))
+    Line(Vector2(center + pool_slit, bottom), Vector2(center + pool_slit - slit_center_offset, bottom + slit_offset))
+
+    # build balls
     types = [BallType.BALL_SOLID] * 7 + [BallType.BALL_STRIPE] * 7
     shuffle(types)
     solid_numbers = [1, 2, 3, 4, 5, 6, 7]
@@ -36,8 +75,8 @@ if __name__ == '__main__':
     shuffle(stripe_numbers)
     number_type = {BallType.BALL_SOLID: solid_numbers, BallType.BALL_STRIPE: stripe_numbers}
 
-    offx = win.get_width() / 2 + Ball._radius
-    offy = win.get_height() / 2 + 150
+    offx = win.get_width() / 2 + pool_line * 0.5 - 2 * Ball._radius
+    offy = win.get_height() / 2 + Ball._radius
 
     ball_count = 0
     for i in range(6):
@@ -49,72 +88,34 @@ if __name__ == '__main__':
                 number_type[type].append(number)
                 type = BallType.BALL_BLACK
                 number = 8
-            Ball(Vector2(10 * j + offx, 10 * i * sqrt(3) + offy), type=type, number=number)
+            Ball(Vector2(Ball._radius * i * sqrt(3) + offx, Ball._radius * j + offy), type=type, number=number)
             ball_count += 1
 
-    # Ball(Vector2(offx, offy), type=type, number=1)
-    cue_ball = CueBall(Vector2(win.get_width() / 2, 200))
+    cue_ball = CueBall(Vector2(win.get_width() / 2 - pool_line * 0.5, win.get_height() / 2))
 
-    pool_line = 350
-    pool_slit = 25
-    pool_d_slit = 35
+    # build holes
+    hole_diagonal_offset = 30
+    hole_vertical_offset = 25
+    hole_radius = Ball._radius * 1.75
+    hole_d_radius = Ball._radius * 2
+    diagonal_adjust = 10
+    vertical_adjust = 23
+    Hole(Vector2(left - diagonal_adjust, top - diagonal_adjust), Vector2(hole_diagonal_offset, hole_diagonal_offset), hole_d_radius)
+    Hole(Vector2(left - diagonal_adjust, bottom + diagonal_adjust), Vector2(hole_diagonal_offset, -hole_diagonal_offset), hole_d_radius)
+    Hole(Vector2(right + diagonal_adjust, top - diagonal_adjust), Vector2(-hole_diagonal_offset, hole_diagonal_offset), hole_d_radius)
+    Hole(Vector2(right + diagonal_adjust, bottom + diagonal_adjust), Vector2(-hole_diagonal_offset, -hole_diagonal_offset), hole_d_radius)
+    Hole(Vector2(center, top - vertical_adjust), Vector2(0, hole_vertical_offset), hole_radius)
+    Hole(Vector2(center, bottom + vertical_adjust), Vector2(0, -hole_vertical_offset), hole_radius)
 
-    left = win.get_width() / 2 - pool_line / 2
-    right = win.get_width() / 2 + pool_line / 2
-    top = win.get_height() / 2 - pool_line
-    bottom = win.get_height() / 2 + pool_line
-    center = win.get_height() / 2
-
-    # table lines
-    Line(Vector2(left, top + pool_d_slit), Vector2(left, center - pool_slit))
-    Line(Vector2(left, bottom - pool_d_slit), Vector2(left, center + pool_slit))
-    Line(Vector2(left + pool_d_slit, bottom), Vector2(right - pool_d_slit, bottom))
-    Line(Vector2(right, bottom - pool_d_slit), Vector2(right, center + pool_slit))
-    Line(Vector2(right, center - pool_slit), Vector2(right, top + pool_d_slit))
-    Line(Vector2(left + pool_d_slit, top), Vector2(right - pool_d_slit, top))
-
-    # pot lines
-    d_offset = 40 
-    Line(Vector2(left, top + pool_d_slit), Vector2(left - d_offset, top + pool_d_slit - d_offset))
-    Line(Vector2(left + pool_d_slit, top), Vector2(left + pool_d_slit - d_offset, top - d_offset))
-    Line(Vector2(left - d_offset, top + pool_d_slit - d_offset), Vector2(left + pool_d_slit - d_offset, top - d_offset))
-
-    Line(Vector2(right - pool_d_slit, top), Vector2(right - pool_d_slit + d_offset, top - d_offset))
-    Line(Vector2(right, top + pool_d_slit), Vector2(right + d_offset, top + pool_d_slit - d_offset))
-    Line(Vector2(right - pool_d_slit + d_offset, top - d_offset), Vector2(right + d_offset, top + pool_d_slit - d_offset))
-
-    Line(Vector2(left + pool_d_slit, bottom), Vector2(left + pool_d_slit - d_offset, bottom + d_offset))
-    Line(Vector2(left, bottom - pool_d_slit), Vector2(left - d_offset, bottom - pool_d_slit + d_offset))
-    Line(Vector2(left + pool_d_slit - d_offset, bottom + d_offset), Vector2(left - d_offset, bottom - pool_d_slit + d_offset))
-
-    Line(Vector2(right, bottom - pool_d_slit), Vector2(right + d_offset, bottom - pool_d_slit + d_offset))
-    Line(Vector2(right - pool_d_slit, bottom), Vector2(right - pool_d_slit + d_offset, bottom + d_offset))
-    Line(Vector2(right + d_offset, bottom - pool_d_slit + d_offset), Vector2(right - pool_d_slit + d_offset, bottom + d_offset))
-
-    s_offset = 25
-    Line(Vector2(right, center - pool_slit), Vector2(right + s_offset, center - pool_slit))
-    Line(Vector2(right, center + pool_slit), Vector2(right + s_offset, center + pool_slit))
-    Line(Vector2(right + s_offset, center - pool_slit), Vector2(right + s_offset, center + pool_slit))
-
-    Line(Vector2(left, center + pool_slit), Vector2(left - s_offset, center + pool_slit))
-    Line(Vector2(left, center - pool_slit), Vector2(left - s_offset, center - pool_slit))
-    Line(Vector2(left - s_offset, center + pool_slit), Vector2(left - s_offset, center - pool_slit))
-    
-    hole_diagonal_offset = 20
-    hole_horizontal_offset = 10
-    Hole(Vector2(left, center), Vector2(hole_horizontal_offset, 0))
-    Hole(Vector2(right, center), Vector2(-hole_horizontal_offset, 0))
-    Hole(Vector2(left, top), Vector2(hole_diagonal_offset, hole_diagonal_offset))
-    Hole(Vector2(right, top), Vector2(-hole_diagonal_offset, hole_diagonal_offset))
-    Hole(Vector2(left, bottom), Vector2(hole_diagonal_offset, -hole_diagonal_offset))
-    Hole(Vector2(right, bottom), Vector2(-hole_diagonal_offset, -hole_diagonal_offset))
+    bg_sprite = pygame.transform.scale_by(pygame.image.load(r'./tableSprite.png'), 0.6)
 
     game_state = GameState()
     Cpu.win = win
     Guide.win = win
 
     # cpu1 = PlayerCpu(game_state, Player.PLAYER_1)
-    cpu2 = PlayerCpu(game_state, Player.PLAYER_2)
+    cpu2 = PlayerCpu(game_state, Player.PLAYER_2, dificulty=1)
+
     guide = AimGuide(game_state, [cpu.player for cpu in PlayerCpu._reg])
 
     done = False
@@ -146,6 +147,12 @@ if __name__ == '__main__':
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
             done = True
+        if keys[pygame.K_m]:
+            for ball in Ball._reg:
+                distance = ball.pos.distance_to(pygame.mouse.get_pos())
+                if distance > Ball._radius / 2:
+                    force = (pygame.mouse.get_pos() - ball.pos).normalize()
+                    ball.set_acc((Ball._radius / distance **2) * force)
 
         # step
         Ball.step_balls()
@@ -166,6 +173,7 @@ if __name__ == '__main__':
         
         # draw
         win.fill((0, 150, 0))
+        # win.blit(bg_sprite, (win.get_width() / 2 - bg_sprite.get_width() / 2, win.get_height() / 2 - bg_sprite.get_height() / 2))
         for hole in Hole._reg:
             hole.draw()
         Ball.draw_balls()

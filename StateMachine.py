@@ -116,6 +116,7 @@ class GameState:
                 print(f'{self.first_touch=}')
                 print(f'{self.potted_this_turn=}')
 
+                # check first touch
                 if self.player_determined:
                     allowed_first_touch = [self.player_ball_type[self.get_player()]]
                     if self.is_current_player_finished():
@@ -136,11 +137,9 @@ class GameState:
                             self.player_ball_type[self.get_player().next()] = first_potted.opposite()
                             self.player_determined = True
                     
-                    all_potted_players = True
-                    for type in self.potted_this_turn:
-                        if self.player_ball_type[self.get_player()] != type:
-                            all_potted_players = False
-                    if all_potted_players:
+                    # check for potted balls
+                    first_potted = self.potted_this_turn[0]
+                    if self.player_ball_type[self.get_player()] == first_potted:
                         advance_turn = False
 
                     if BallType.BALL_CUE in self.potted_this_turn:
@@ -159,7 +158,7 @@ class GameState:
                                 # current player won
                                 self.player_winner = self.get_player()
                         else:
-                            # foul black potted, other player won
+                            # foul black potted, other player won 
                             self.player_winner = self.get_player().next()
                             foul = Foul.POTTED_BLACK
                         print(f'{self.player_winner} Wins')
