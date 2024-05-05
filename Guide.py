@@ -5,6 +5,7 @@ from Physics import Ball, Line
 from Calc import find_collision_centers_on_line, find_collision_position_ball_to_line
 import pygame
 from pygame.math import Vector2
+from math import radians
 
 win = None
 
@@ -17,6 +18,8 @@ class AimGuide:
         self.game_state = game_state
         self.cpu_players = cpu_players
         self.cpu_aim: Vector2 = None
+
+        self.draw_points: List[Vector2] = []
     
     def handle_event(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -54,40 +57,60 @@ class AimGuide:
         except ValueError:
             vec_normalized = Vector2(0,0)
         
-        
-
+        # guide points is ghost position
         guide_points = []
+
         # test guides with balls
         for ball in Ball._reg:
             if ball is cue_ball:
                 continue
             
-            point = find_collision_centers_on_line(ball.pos, cue_ball.pos, vec_normalized, Ball._radius)
-            if not point:
+            ghost = find_collision_centers_on_line(ball.pos, cue_ball.pos, vec_normalized, Ball._radius)
+            if not ghost:
                 continue
-            cue_to_mouse = target - cue_ball.pos
-            cue_to_guide = point - cue_ball.pos
-            if cue_to_mouse.dot(cue_to_guide) > 0:
-                guide_points.append((point, ball))
+            guide_points.append({'pos': ghost, 'ball': ball, 'line': None})
 
+        # test guides with lines
+        for line in Line._reg:
+            ghost = find_collision_position_ball_to_line(line.start, line.end, cue_ball.pos, cue_ball.pos + vec, Ball._radius, Line._radius)
+            if not ghost:
+                continue
+            guide_points.append({'pos': ghost, 'ball': None, 'line': line})
+
+
+        # claculate power
         power = 0.0
         if self.powering:
             power = min(target.distance_to(pygame.mouse.get_pos()), 400.0) / 400.0
 
-        
-
-        # test guides with 
-
         if len(guide_points) > 0:
-            point, ball = min(guide_points, key=lambda p: cue_ball.pos.distance_squared_to(p[0]))
-            pygame.draw.circle(win, (255,255,0), point, Ball._radius, 1)
-            bounce_vec = ball.pos - point
-            pygame.draw.line(win, (255,255,0), point, point + bounce_vec * 4)
-        
-            pygame.draw.line(win, (255,255,0), cue_ball.pos, point)
+            guide = min(guide_points, key=lambda p: cue_ball.pos.distance_squared_to(p['pos']))
+            ghost_pos: Vector2 = guide['pos']
+            pygame.draw.circle(win, (255,255,0), ghost_pos, Ball._radius, 1)
+            # draw collision guide with line
+            pygame.draw.line(win, (255,255,0), cue_ball.pos, ghost_pos)
+            if guide['ball'] is not None:
+                # draw bounce target ball
+                ball: Ball = guide['ball']
+                target_bounce_vec = (ball.pos - ghost_pos).normalize()
+                target_bounce_strength = (ghost_pos - cue_ball.pos).normalize().dot(target_bounce_vec)
+                pygame.draw.line(win, (255,255,0), ball.pos, ghost_pos + target_bounce_vec * 100 * target_bounce_strength)
+                ghost_bounce_vec = max([Vector2(-target_bounce_vec.y, target_bounce_vec.x), Vector2(target_bounce_vec.y, -target_bounce_vec.x)], key=lambda x: x.dot(target - cue_ball.pos))
+                ghost_bounce_strength = 1 - target_bounce_strength
+                pygame.draw.line(win, (255,255,0), ghost_pos, ghost_pos + ghost_bounce_vec * 100 * ghost_bounce_strength)
+
+            elif guide['line'] is not None:
+                line: Line = guide['line']
+                # todo: reflect the line and draw
         
         # draw cue
         draw_cue(vec_normalized, power)
+
+        # draw points
+        for point in self.draw_points:
+            pygame.draw.circle(win, (255,0,0), point, 5)
+            pygame.draw.circle(win, (255,0,0), point, Ball._radius, 1)
+        self.draw_points.clear()
 
 def draw_cue(dir, power):
     # dir should be normalized

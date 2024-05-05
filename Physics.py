@@ -264,10 +264,11 @@ class Line:
         self.end = end
 
     def draw(self):
-        pygame.draw.line(win, (0,0,0), self.start, self.end, Line._radius * 2)
-        pygame.draw.circle(win, (0,0,0), self.start, Line._radius)
-        pygame.draw.circle(win, (0,0,0), self.end, Line._radius)
-        # pygame.draw.line(win, (255,0,0), self.start, self.end)
+        color = (255,255,255)
+        pygame.draw.line(win, color, self.start, self.end, Line._radius * 2)
+        pygame.draw.circle(win, color, self.start, Line._radius)
+        pygame.draw.circle(win, color, self.end, Line._radius)
+        pygame.draw.line(win, (255,0,0), self.start, self.end)
 
     def draw_lines():
         if not draw_solids:

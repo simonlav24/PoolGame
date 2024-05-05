@@ -41,9 +41,9 @@ if __name__ == '__main__':
 
     # table lines
     Line(Vector2(left, top + pool_d_slit), Vector2(left, bottom - pool_d_slit))
-    Line(Vector2(right, top + pool_d_slit), Vector2(right, bottom - pool_d_slit))
-    Line(Vector2(left + pool_d_slit, top), Vector2(center - pool_slit, top))
-    Line(Vector2(center + pool_slit, top), Vector2(right - pool_d_slit, top))
+    Line(Vector2(right, bottom - pool_d_slit), Vector2(right, top + pool_d_slit))
+    Line(Vector2(center - pool_slit, top), Vector2(left + pool_d_slit, top))
+    Line(Vector2(right - pool_d_slit, top), Vector2(center + pool_slit, top))
     Line(Vector2(left + pool_d_slit, bottom), Vector2(center - pool_slit, bottom))
     Line(Vector2(center + pool_slit, bottom), Vector2(right - pool_d_slit, bottom))
 
@@ -64,6 +64,7 @@ if __name__ == '__main__':
     Line(Vector2(center + pool_slit, top), Vector2(center + pool_slit - slit_center_offset, top - slit_offset))
     Line(Vector2(center - pool_slit, bottom), Vector2(center - pool_slit + slit_center_offset, bottom + slit_offset))
     Line(Vector2(center + pool_slit, bottom), Vector2(center + pool_slit - slit_center_offset, bottom + slit_offset))
+    Line._reg.reverse()
 
     # build balls
     types = [BallType.BALL_SOLID] * 7 + [BallType.BALL_STRIPE] * 7
@@ -185,7 +186,7 @@ if __name__ == '__main__':
                 guide.set_aim(cpu.get_direction())
         
         # draw
-        win.fill((255, 255, 255))
+        win.fill((30, 30, 30))
         if sprites_loaded:
             win.blit(table_border_sprite, (win.get_width() / 2 - table_border_sprite.get_width() / 2, win.get_height() / 2 - table_border_sprite.get_height() / 2))
             win.blit(table_top_sprite, (win.get_width() / 2 - table_top_sprite.get_width() / 2, win.get_height() / 2 - table_top_sprite.get_height() / 2))
@@ -215,7 +216,7 @@ if __name__ == '__main__':
             text = f'{str(game_state.get_player())}: {game_state.player_ball_type[game_state.get_player()]}'
         else:
             text = f'Game Over, {game_state.player_winner} Won'
-        player_turn_surf = font1.render(text, True, (0,0,0))
+        player_turn_surf = font1.render(text, True, (255,255,255))
         win.blit(player_turn_surf, (10,10))
 
         pygame.display.update()
