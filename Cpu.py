@@ -154,7 +154,8 @@ class PlayerCpu:
     def adjust_dificulty(self):
         if not randint(1, 3) <= self.dificulty:
             # bad shot
-            adjust_vec = Vector2(uniform(-0.5,0.5), uniform(-0.5,0.5))
+            adj = 0.1
+            adjust_vec = Vector2(uniform(-adj, adj), uniform(-adj, adj))
             self.direction += adjust_vec
             print('bad shot')
 

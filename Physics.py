@@ -3,32 +3,47 @@ import pygame
 from pygame.math import Vector2
 from typing import List, Tuple
 from StateMachine import BallType
-import time
 
-font_small = None
-win = None
+ball_numbers_font = None
+win: pygame.Surface = None
+draw_solids = False
+
+BALL_RADIUS = 13
+texture_mult = 64
+loaded_textures = True
+try:
+    reflection_map = pygame.image.load(r'Assets/ReflectionMap.png')
+    reflection_map = pygame.transform.smoothscale(reflection_map, (BALL_RADIUS * 2, BALL_RADIUS * 2))
+    shadow_map = pygame.image.load(r'Assets/ShadowMap.png')
+    shadow_map = pygame.transform.smoothscale_by(shadow_map, 36.4 / shadow_map.get_width())
+except Exception:
+    loaded_textures = False
+
+def initialize():
+    global ball_numbers_font
+    ball_numbers_font = pygame.font.SysFont('Arial', 24)
 
 ball_color = {
-    0: (197, 171, 144),
-    1: (229, 160, 31),
-    2: (55, 57, 106),
-    3: (235, 53, 49),
-    4: (76, 51, 81),
-    5: (253, 88, 43),
-    6: (65, 119, 105),
-    7: (141, 50, 59),
-    8: (44, 42, 47),
-    9: (229, 160, 31),
-    10: (55, 57, 106),
-    11: (235, 53, 49),
-    12: (76, 51, 81),
-    13: (253, 88, 43),
-    14: (65, 119, 105),
-    15: (141, 50, 59),
+    0: (230, 230, 230),
+    1: (250, 185, 37),
+    2: (25, 108, 227),
+    3: (243, 6, 21),
+    4: (82, 14, 156),
+    5: (235, 95, 2),
+    6: (39, 207, 68),
+    7: (127, 28, 9),
+    8: (14, 14, 14),
+    9: (250, 185, 37),
+    10: (25, 108, 227),
+    11: (243, 6, 21),
+    12: (82, 14, 156),
+    13: (235, 95, 2),
+    14: (39, 207, 68),
+    15: (127, 28, 9),
 }
 
 class Ball:
-    _radius = 13
+    _radius = BALL_RADIUS
     _reg: List['Ball'] = []
     _fakes: List['Ball'] = []
     _collisions: Tuple['Ball', 'Ball'] = []
@@ -37,7 +52,6 @@ class Ball:
     _first_cue_touch: BallType = None
     _potted_this_turn: List[BallType] = []
     _cue_ball: 'Ball' = None
-    _TEMP_col_guides = []
     def __init__(self, pos=Vector2(0,0), fake=False, type=BallType.BALL_NONE, number=0):
         self.pos = pos
         self.vel = Vector2(0,0)
@@ -120,7 +134,6 @@ class Ball:
                 if ball.is_fake or target.is_fake:
                     second_radius = Line._radius
                 if distance < Ball._radius * 2:
-                    Ball._TEMP_col_guides.append((ball.pos.copy(), target.pos.copy()))
                     if True:
                         # resolve static collision by overlap
                         overlap = 0.5 * (distance - Ball._radius - second_radius)
@@ -157,28 +170,36 @@ class Ball:
 
     def create_surf(self):
         color = ball_color[self.number]
-        self.surf = pygame.Surface((Ball._radius * 2, Ball._radius * 2), pygame.SRCALPHA)
+        size_multiplied = texture_mult
+        self.surf = pygame.Surface((size_multiplied, size_multiplied), pygame.SRCALPHA)
         if self.number > 8:
             # stripe
             self.surf.fill(ball_color[0])
-            self.surf.fill(color, ((0, Ball._radius * 0.5), (self.surf.get_width(), self.surf.get_height() - Ball._radius)))
+            self.surf.fill(color, ((0, size_multiplied * 0.25), (self.surf.get_width(), self.surf.get_height() - size_multiplied / 2)))
         else:
             # solid
             self.surf.fill(color)
         
-        pygame.draw.circle(self.surf, ball_color[0], (Ball._radius, Ball._radius), Ball._radius * 0.5)
+        pygame.draw.circle(self.surf, ball_color[0], (size_multiplied / 2, size_multiplied / 2), size_multiplied * 0.25)
 
         if self.number != 0:
-            text = font_small.render(str(self.number), True, (0,0,0))
-            self.surf.blit(text, (Ball._radius - text.get_width() / 2, Ball._radius - text.get_height() / 2))
+            text = ball_numbers_font.render(str(self.number), True, (0,0,0))
+            self.surf.blit(text, (self.surf.get_width() / 2 - text.get_width() / 2, self.surf.get_height() / 2 - text.get_height() / 2))
 
-        mask = pygame.Surface((Ball._radius * 2, Ball._radius * 2), pygame.SRCALPHA)
+        # apply mask
+        mask = pygame.Surface((size_multiplied, size_multiplied), pygame.SRCALPHA)
         mask.fill((255,255,255,255))
-        pygame.draw.circle(mask, (0,0,0,0), (Ball._radius, Ball._radius), Ball._radius)
+        pygame.draw.circle(mask, (0,0,0,0), (size_multiplied / 2, size_multiplied / 2), size_multiplied / 2)
         self.surf.blit(mask, (0,0), special_flags=pygame.BLEND_RGBA_SUB)
+
+        # scale
+        self.surf = pygame.transform.smoothscale_by(self.surf, (2 * Ball._radius) / size_multiplied)
 
     def draw(self):
         win.blit(self.surf, self.pos - Vector2(Ball._radius, Ball._radius))
+        if loaded_textures:
+            pos = self.pos - Vector2(reflection_map.get_width() / 2, reflection_map.get_height() / 2)
+            win.blit(reflection_map, pos)
 
     def step_balls():
         for i in range(5):
@@ -199,8 +220,13 @@ class Ball:
         return True
 
     def draw_balls():
+        if loaded_textures:
+            for ball in Ball._reg:
+                pos = ball.pos - Vector2(shadow_map.get_width() / 2, shadow_map.get_height() / 2)
+                win.blit(shadow_map, pos)
         for ball in Ball._reg:
             ball.draw()
+        
 
 class CueBall(Ball):
     def __init__(self, pos=Vector2(0,0)):
@@ -244,6 +270,8 @@ class Line:
         # pygame.draw.line(win, (255,0,0), self.start, self.end)
 
     def draw_lines():
+        if not draw_solids:
+            return
         for line in Line._reg:
             line.draw()
 
@@ -269,6 +297,8 @@ class Hole:
                 Ball._ball_to_remove.append(ball)
     
     def draw(self):
+        if not draw_solids:
+            return
         pygame.draw.circle(win, (0,0,0), self.pos, self.radius)
         pygame.draw.circle(win, (255,0,0), self.pos, self.radius, 1)
         draw_target = False

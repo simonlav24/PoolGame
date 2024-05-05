@@ -4,7 +4,8 @@ Main module
 
 import pygame
 from pygame.math import Vector2
-from random import shuffle
+import os
+from random import shuffle, choice
 import Physics
 from Physics import Ball, Line, Hole, CueBall
 from Calc import *
@@ -23,11 +24,9 @@ if __name__ == '__main__':
     clock = pygame.time.Clock()
 
     font1 = pygame.font.SysFont('Arial', 16)
-    font_small = pygame.font.SysFont('Arial', 10)
 
     Physics.win = win
-    Physics.font_small = font_small
-
+    Physics.initialize()
     
     # build table
     pool_line = 450
@@ -112,9 +111,23 @@ if __name__ == '__main__':
     Guide.win = win
 
     # cpu1 = PlayerCpu(game_state, Player.PLAYER_1)
-    cpu2 = PlayerCpu(game_state, Player.PLAYER_2, dificulty=3)
+    # cpu2 = PlayerCpu(game_state, Player.PLAYER_2, dificulty=2)
 
     guide = AimGuide(game_state, [cpu.player for cpu in PlayerCpu._reg])
+    
+    # load sprites
+    sprites_loaded = True
+    try:
+        table_border_sprite = pygame.transform.smoothscale_by(pygame.image.load(r'Assets/Border.png'), 0.6)
+        table_colors = []
+        for path in os.listdir('Assets'):
+            if path.startswith('Table') and path.endswith('.png'):
+                table_colors.append(os.path.join('Assets', path))
+        table_path = choice(table_colors)
+        table_top_sprite = pygame.transform.smoothscale_by(pygame.image.load(table_path), 0.6)
+    except Exception:
+        sprites_loaded = False
+        Physics.draw_solids = True
 
     done = False
     while not done:
@@ -127,6 +140,8 @@ if __name__ == '__main__':
                 if event.key == pygame.K_c:
                     for cpu in PlayerCpu._reg:
                         cpu.debug = not cpu.debug
+                if event.key == pygame.K_s:
+                    Physics.draw_solids = not Physics.draw_solids
             if game_state.get_state() == State.PLAY:
                 if event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
@@ -170,7 +185,10 @@ if __name__ == '__main__':
                 guide.set_aim(cpu.get_direction())
         
         # draw
-        win.fill((0, 150, 0))
+        win.fill((255, 255, 255))
+        if sprites_loaded:
+            win.blit(table_border_sprite, (win.get_width() / 2 - table_border_sprite.get_width() / 2, win.get_height() / 2 - table_border_sprite.get_height() / 2))
+            win.blit(table_top_sprite, (win.get_width() / 2 - table_top_sprite.get_width() / 2, win.get_height() / 2 - table_top_sprite.get_height() / 2))
 
         for hole in Hole._reg:
             hole.draw()

@@ -49,15 +49,18 @@ class AimGuide:
             target = self.power_origin
         vec = target - cue_ball.pos
 
+        try:
+            vec_normalized = vec.normalize()
+        except ValueError:
+            vec_normalized = Vector2(0,0)
+        
+        
+
         guide_points = []
         # test guides with balls
         for ball in Ball._reg:
             if ball is cue_ball:
                 continue
-            try:
-                vec_normalized = vec.normalize()
-            except ValueError as e:
-                vec_normalized = Vector2(0,0)
             
             point = find_collision_centers_on_line(ball.pos, cue_ball.pos, vec_normalized, Ball._radius)
             if not point:
@@ -71,7 +74,9 @@ class AimGuide:
         if self.powering:
             power = min(target.distance_to(pygame.mouse.get_pos()), 400.0) / 400.0
 
-        draw_cue(vec_normalized, power)                
+        
+
+        # test guides with 
 
         if len(guide_points) > 0:
             point, ball = min(guide_points, key=lambda p: cue_ball.pos.distance_squared_to(p[0]))
@@ -80,6 +85,9 @@ class AimGuide:
             pygame.draw.line(win, (255,255,0), point, point + bounce_vec * 4)
         
             pygame.draw.line(win, (255,255,0), cue_ball.pos, point)
+        
+        # draw cue
+        draw_cue(vec_normalized, power)
 
 def draw_cue(dir, power):
     # dir should be normalized
