@@ -1,5 +1,7 @@
 # Pool Game
+
 ![](/Assets/ScreenShot.png)
+
 A practice in game developement, physics, state machine, rules enforcement and AI opponent
 
 ### Features:
