@@ -44,6 +44,7 @@ def find_collision_centers_on_line(target_pos: Vector2, cue_pos: Vector2, line_d
     return ghost_pos
 
 def closest_point_on_line(point_a: Vector2, point_b: Vector2, point_target: Vector2) -> Vector2:
+    # find clsosest point on line ab to target. none if not on line
     ab = point_b - point_a
     ac = point_target - point_a
     if ab.dot(ab) == 0:

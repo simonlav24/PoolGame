@@ -112,7 +112,7 @@ if __name__ == '__main__':
     Guide.win = win
 
     # cpu1 = PlayerCpu(game_state, Player.PLAYER_1)
-    # cpu2 = PlayerCpu(game_state, Player.PLAYER_2, dificulty=2)
+    cpu2 = PlayerCpu(game_state, Player.PLAYER_2, dificulty=2)
 
     guide = AimGuide(game_state, [cpu.player for cpu in PlayerCpu._reg])
     
@@ -130,6 +130,8 @@ if __name__ == '__main__':
         sprites_loaded = False
         Physics.draw_solids = True
 
+    debug_move_ball = None
+
     done = False
     while not done:
         # --- Main event loop
@@ -143,6 +145,8 @@ if __name__ == '__main__':
                         cpu.debug = not cpu.debug
                 if event.key == pygame.K_s:
                     Physics.draw_solids = not Physics.draw_solids
+            if event.type == pygame.KEYUP:
+                debug_move_ball = None
             if game_state.get_state() == State.PLAY:
                 if event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
@@ -161,12 +165,15 @@ if __name__ == '__main__':
         keys = pygame.key.get_pressed()
         if keys[pygame.K_ESCAPE]:
             done = True
+
         if keys[pygame.K_m]:
-            for ball in Ball._reg:
-                distance = ball.pos.distance_to(pygame.mouse.get_pos())
-                if distance > Ball._radius / 2:
-                    force = (pygame.mouse.get_pos() - ball.pos).normalize()
-                    ball.set_acc((Ball._radius / distance **2) * force)
+            mouse_pos = Vector2(pygame.mouse.get_pos())
+            if debug_move_ball:
+                debug_move_ball.pos = mouse_pos
+            else:
+                for ball in Ball._reg:
+                    if ball.pos.distance_to(mouse_pos) < Ball._radius:
+                        debug_move_ball = ball
 
         # step
         Ball.step_balls()
