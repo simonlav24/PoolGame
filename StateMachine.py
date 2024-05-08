@@ -60,7 +60,7 @@ class Player(Enum):
 
 
 class GameState:
-    def __init__(self):
+    def __init__(self, table_dims):
         self.current_state: State = State.PLAY
         self.player_turn: Player = Player.PLAYER_1
 
@@ -79,6 +79,7 @@ class GameState:
         }
         self.player_winner: Player = None
         self.round_count = 0
+        self.table_dims = table_dims
 
     def update_potted(self, potted: List[BallType]):
         self.potted_this_turn = potted

@@ -171,6 +171,14 @@ class PlayerCpu:
             if pos.distance_to(ball.pos) < Ball._radius * 2:
                 return False
         
+        # check if inside talbe
+        dims = self.game_state.table_dims
+        if (pos.x < dims['left'] or
+            pos.x > dims['right'] or
+            pos.y < dims['top'] or
+            pos.y > dims['bottom']):
+            return False
+
         # check for no line around
         # todo
 
@@ -188,6 +196,7 @@ class PlayerCpu:
                 # check for free cue position 
                 vec_to_hole = (hole.target_pos - ball.pos).normalize()
                 pos = ball.pos - vec_to_hole * Ball._radius * 5
+
                 if not self.is_pos_free(pos):
                     continue
                 # check if ball can be potted
@@ -198,6 +207,8 @@ class PlayerCpu:
 
         # choose from available positions
         cue_new_pos = choice(available_positions)[2]
+
+        self.shot_type = 'ball in hand'
 
         cue_ball = Ball._cue_ball
         if cue_ball.is_out:
@@ -215,7 +226,10 @@ class PlayerCpu:
             self.determined = True
 
         # check for current turn
-        if not (self.game_state.get_state() in [State.PLAY, State.MOVING_CUE_BALL] and self.game_state.get_player() == self.player):
+        if not self.game_state.get_player() == self.player:
+            return
+        
+        if not (self.game_state.get_state() in [State.PLAY, State.MOVING_CUE_BALL]):
             return
 
         # check for mouse in hand turn

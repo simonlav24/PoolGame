@@ -39,6 +39,14 @@ if __name__ == '__main__':
     bottom = win.get_height() / 2 + pool_line / 2
     center = win.get_width() / 2
 
+    table_dims = {
+        'left': left,
+        'right': right,
+        'top': top,
+        'bottom': bottom,
+        'center': center,
+    }
+
     # table lines
     Line(Vector2(left, top + pool_d_slit), Vector2(left, bottom - pool_d_slit))
     Line(Vector2(right, bottom - pool_d_slit), Vector2(right, top + pool_d_slit))
@@ -91,7 +99,7 @@ if __name__ == '__main__':
             Ball(Vector2(Ball._radius * i * sqrt(3) + offx, Ball._radius * j + offy), type=type, number=number)
             ball_count += 1
 
-    cue_ball = CueBall(Vector2(win.get_width() / 2 - pool_line * 0.5, win.get_height() / 2))
+    CueBall(Vector2(win.get_width() / 2 - pool_line * 0.5, win.get_height() / 2))
 
     # build holes
     hole_diagonal_offset = 30
@@ -107,7 +115,7 @@ if __name__ == '__main__':
     Hole(Vector2(center, top - vertical_adjust), Vector2(0, hole_vertical_offset), hole_radius)
     Hole(Vector2(center, bottom + vertical_adjust), Vector2(0, -hole_vertical_offset), hole_radius)
 
-    game_state = GameState()
+    game_state = GameState(table_dims)
     Cpu.win = win
     Guide.win = win
 
@@ -151,15 +159,15 @@ if __name__ == '__main__':
                 if event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
                         direction, power = guide.get_aim_power()
-                        cue_ball.strike(direction, power)
+                        Ball._cue_ball.strike(direction, power)
                         game_state.update()
             elif game_state.get_state() == State.MOVING_CUE_BALL:
                 if event.type == pygame.MOUSEBUTTONUP:
                     if event.button == 1:
-                        if cue_ball.is_out:
-                            cue_ball = CueBall(pygame.mouse.get_pos())
+                        if Ball._cue_ball.is_out:
+                            Ball._cue_ball = CueBall(pygame.mouse.get_pos())
                         else:
-                            cue_ball.set_pos(pygame.mouse.get_pos())
+                            Ball._cue_ball.set_pos(pygame.mouse.get_pos())
                         game_state.update()
         
         keys = pygame.key.get_pressed()
@@ -182,10 +190,10 @@ if __name__ == '__main__':
         if game_state.get_state() == State.WAIT_FOR_STABLE:
             if Ball.check_stability():
                 # determine next turn
-                game_state.update_potted(cue_ball.get_potted_this_turn())
-                game_state.first_touch = cue_ball.get_first_touch()
+                game_state.update_potted(Ball._cue_ball.get_potted_this_turn())
+                game_state.first_touch = Ball._cue_ball.get_first_touch()
                 game_state.update()
-                cue_ball.new_turn()
+                Ball._cue_ball.new_turn()
         
         for cpu in PlayerCpu._reg:
             cpu.step()
