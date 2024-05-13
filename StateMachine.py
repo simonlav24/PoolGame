@@ -24,6 +24,14 @@ class BallType(Enum):
     BALL_STRIPE = 3
     BALL_BLACK = 4
 
+    SNOOKER_RED = 5
+    SNOOKER_YELLOW = 6
+    SNOOKER_GREEN = 7
+    SNOOKER_BROWN = 8
+    SNOOKER_BLUE = 9
+    SNOOKER_PINK = 10
+    SNOOKER_BLACK = 11
+
     def get_color(self):
         return [
             (0,0,0), 

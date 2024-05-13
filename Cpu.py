@@ -58,7 +58,7 @@ class PlayerCpu:
         # check if cue to ghost positon is clear
         cue_to_ghost_clear = True
         for other_ball in Ball._reg:
-            if other_ball.type == BallType.BALL_CUE or other_ball is ball:
+            if other_ball.get_type() == BallType.BALL_CUE or other_ball is ball:
                 continue
             if check_line_circle_collision(cue_pos, ghost_pos, other_ball.pos, Ball._radius, Ball._radius):
                 cue_to_ghost_clear = False
@@ -69,7 +69,7 @@ class PlayerCpu:
         # check if ball to hole is clear
         ball_to_hole_clear = True
         for other_ball in Ball._reg:
-            if other_ball.type == BallType.BALL_CUE or other_ball is ball:
+            if other_ball.get_type() == BallType.BALL_CUE or other_ball is ball:
                 continue
             if check_line_circle_collision(ball.pos, hole.target_pos, other_ball.pos, Ball._radius, Ball._radius):
                 ball_to_hole_clear = False
@@ -86,10 +86,10 @@ class PlayerCpu:
             self.ball_type = BallType.BALL_BLACK
         
         if self.determined:
-            if self.ball_type != ball.type:
+            if self.ball_type != ball.get_type():
                 return False
         else:
-            if ball.type == BallType.BALL_BLACK:
+            if ball.get_type() == BallType.BALL_BLACK:
                 return False
         if ball is Ball._cue_ball:
             return False

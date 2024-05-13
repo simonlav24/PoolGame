@@ -30,6 +30,8 @@ class PoolGame:
         self.cpus: List[PlayerCpu] = []
         self.rules = rules
 
+        self.table_center = Vector2(win.get_width() / 2, win.get_height() / 2)
+
     def initialize(self):
         self.build_table()
         self.build_balls()
@@ -46,6 +48,7 @@ class PoolGame:
 
         self.load_sprites()
 
+
     def load_sprites(self):
         # load sprites
         self.sprites_loaded = True
@@ -59,7 +62,10 @@ class PoolGame:
             self.table_top_sprite = pygame.transform.smoothscale_by(pygame.image.load(table_path), 0.6)
         except Exception:
             self.sprites_loaded = False
+        
+        if not self.sprites_loaded:
             Physics.draw_solids = True
+
 
     def build_table(self):
         # build table
@@ -67,11 +73,11 @@ class PoolGame:
         pool_slit = 29
         pool_d_slit = 36
 
-        left = win.get_width() / 2 - pool_line
-        right = win.get_width() / 2 + pool_line
-        top = win.get_height() / 2 - pool_line / 2
-        bottom = win.get_height() / 2 + pool_line / 2
-        center = win.get_width() / 2
+        left = self.table_center[0] - pool_line
+        right = self.table_center[0] + pool_line
+        top = self.table_center[1] - pool_line / 2
+        bottom = self.table_center[1] + pool_line / 2
+        center = self.table_center[0]
 
         self.table_dims = {
             'left': left,
@@ -125,31 +131,81 @@ class PoolGame:
 
     def build_balls(self):
         # build balls
-        types = [BallType.BALL_SOLID] * 7 + [BallType.BALL_STRIPE] * 7
-        shuffle(types)
-        solid_numbers = [1, 2, 3, 4, 5, 6, 7]
-        shuffle(solid_numbers)
-        stripe_numbers = [9, 10, 11, 12, 13, 14, 15]
-        shuffle(stripe_numbers)
-        number_type = {BallType.BALL_SOLID: solid_numbers, BallType.BALL_STRIPE: stripe_numbers}
+        match self.rules:
+            case Rules.BALL_8:
+                numbers = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15]
+                shuffle(numbers)
 
-        offx = win.get_width() / 2 + self.pool_line * 0.5 - 2 * Ball._radius
-        offy = win.get_height() / 2 + Ball._radius
+                offx = self.table_center[0] + self.pool_line * 0.5 - 2 * Ball._radius
+                offy = self.table_center[1] + Ball._radius
 
-        ball_count = 0
-        for i in range(6):
-            for j in range(-i, i, 2):
-                type = types.pop()
-                number = number_type[type].pop()
-                if ball_count == 4:
-                    types.append(type)
-                    number_type[type].append(number)
-                    type = BallType.BALL_BLACK
-                    number = 8
-                Ball(Vector2(Ball._radius * i * sqrt(3) + offx, Ball._radius * j + offy), type=type, number=number)
-                ball_count += 1
+                ball_count = 0
+                for i in range(6):
+                    for j in range(-i, i, 2):
+                        number = numbers.pop()
+                        if ball_count == 4:
+                            numbers.append(number)
+                            number = 8
+                        ball_pos = Vector2(Ball._radius * i * sqrt(3) + offx, Ball._radius * j + offy)
+                        Ball(ball_pos, number=number)
+                        ball_count += 1
 
-        CueBall(Vector2(win.get_width() / 2 - self.pool_line * 0.5, win.get_height() / 2))
+                ball_pos = Vector2(self.table_center[0] - self.pool_line * 0.5, self.table_center[1])
+                CueBall(ball_pos)
+
+            case Rules.BALL_9:
+                numbers = [2, 3, 4, 5, 6, 7, 8]
+                shuffle(numbers)
+
+                offx = self.table_center[0] + self.pool_line * 0.5 - 2 * Ball._radius
+                offy = self.table_center[1] + Ball._radius
+
+                ball_count = 0
+                for i in range(5):
+                    balls_in_col = - abs(i - 2) + 3
+                    for j in range(-balls_in_col, balls_in_col, 2):
+                        number = numbers.pop()
+                        if ball_count == 0:
+                            numbers.append(number)
+                            number = 1
+                        if ball_count == 4:
+                            numbers.append(number)
+                            number = 9
+                        ball_pos = Vector2(Ball._radius * i * sqrt(3) + offx, Ball._radius * j + offy)
+                        Ball(ball_pos, number=number)
+                        ball_count += 1
+                
+                ball_pos = Vector2(self.table_center[0] - self.pool_line * 0.5, self.table_center[1])
+                CueBall(ball_pos)
+            
+            case Rules.SNOOKER:
+                offx = self.table_center[0] + self.pool_line * 0.5 - 2 * Ball._radius
+                offy = self.table_center[1] + Ball._radius
+
+                zero_pos = None
+                last_pos = None
+
+                ball_count = 0
+                for i in range(6):
+                    for j in range(-i, i, 2):
+                        number = 101
+                        ball_pos = Vector2(Ball._radius * i * sqrt(3) + offx, Ball._radius * j + offy)
+                        if ball_count == 0:
+                            zero_pos = ball_pos
+                        if ball_count == 12:
+                            last_pos = ball_pos
+                        Ball(ball_pos, number=number)
+                        ball_count += 1
+                
+                Ball(self.table_center - (self.pool_line * 0.5, -self.pool_line * 0.25), number=102)
+                Ball(self.table_center - (self.pool_line * 0.5, self.pool_line * 0.25), number=103)
+                Ball(self.table_center - (self.pool_line * 0.5, 0), number=104)
+                Ball(Vector2(self.table_center), number=105)
+                Ball(zero_pos + Vector2(-Ball._radius * 2, 0), number=106)
+                Ball(last_pos + Vector2(Ball._radius * 4, 0), number=107)
+
+                ball_pos = Vector2(self.table_center[0] - self.pool_line * 0.5 - Ball._radius * 4, self.table_center[1])
+                CueBall(ball_pos)
 
     def main_loop(self):
         win = self.win
@@ -219,8 +275,8 @@ class PoolGame:
             # draw
             win.fill((30, 30, 30))
             if self.sprites_loaded:
-                win.blit(self.table_border_sprite, (win.get_width() / 2 - self.table_border_sprite.get_width() / 2, win.get_height() / 2 - self.table_border_sprite.get_height() / 2))
-                win.blit(self.table_top_sprite, (win.get_width() / 2 - self.table_top_sprite.get_width() / 2, win.get_height() / 2 - self.table_top_sprite.get_height() / 2))
+                win.blit(self.table_border_sprite, (self.table_center[0] - self.table_border_sprite.get_width() / 2, self.table_center[1] - self.table_border_sprite.get_height() / 2))
+                win.blit(self.table_top_sprite, (self.table_center[0] - self.table_top_sprite.get_width() / 2, self.table_center[1] - self.table_top_sprite.get_height() / 2))
 
             for hole in Hole._reg:
                 hole.draw()
@@ -252,6 +308,7 @@ class PoolGame:
 
             pygame.display.update()
             clock.tick(60)
+
 
 if __name__ == '__main__':
 

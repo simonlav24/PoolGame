@@ -40,6 +40,13 @@ ball_color = {
     13: (235, 95, 2),
     14: (39, 207, 68),
     15: (127, 28, 9),
+    101: (214, 38, 16),
+    102: (250, 185, 37),
+    103: (19, 84, 47),
+    104: (130, 61, 22),
+    105: (25, 108, 227),
+    106: (229, 119, 165),
+    107: (14, 14, 14),
 }
 
 class Ball:
@@ -52,7 +59,7 @@ class Ball:
     _first_cue_touch: BallType = None
     _potted_this_turn: List[BallType] = []
     _cue_ball: 'Ball' = None
-    def __init__(self, pos=Vector2(0,0), fake=False, type=BallType.BALL_NONE, number=0):
+    def __init__(self, pos=Vector2(0,0), fake=False, number=0):
         self.pos = pos
         self.vel = Vector2(0,0)
         self.acc = Vector2(0,0)
@@ -62,7 +69,6 @@ class Ball:
             Ball._fakes.append(self)
         else:
             Ball._reg.append(self)
-        self.type = type
         self.number = number
         self.create_surf()
     
@@ -75,6 +81,19 @@ class Ball:
 
     def __repr__(self):
         return str(self)
+
+    def get_type(self) -> BallType:
+        if self.number == 0:
+            return BallType.BALL_CUE
+        if self.number == 8:
+            return BallType.BALL_BLACK
+        if self.number < 8:
+            return BallType.BALL_SOLID
+        elif self.number < 100:
+            return BallType.BALL_STRIPE
+        
+        # todo: case for snooker
+        return BallType.SNOOKER_RED
 
     def set_vel(self, vel):
         self.vel = vel
@@ -101,7 +120,7 @@ class Ball:
     
     def potted(self):
         Ball._entered_balls.append(self)
-        Ball._potted_this_turn.append(self.type)
+        Ball._potted_this_turn.append(self.get_type())
         Ball._reg.remove(self)
 
     def resolve_line_collision():
@@ -146,8 +165,8 @@ class Ball:
             # check for first cue touch
             if all([Ball._first_cue_touch is None,
                     not ball.is_fake and not target.is_fake,
-                    (ball.type == BallType.BALL_CUE or target.type == BallType.BALL_CUE)]):
-                Ball._first_cue_touch = target.type if target.type != BallType.BALL_CUE else ball.type
+                    (ball.get_type() == BallType.BALL_CUE or target.get_type() == BallType.BALL_CUE)]):
+                Ball._first_cue_touch = target.get_type() if target.get_type() != BallType.BALL_CUE else ball.get_type()
 
             distance = ball.pos.distance_to(target.pos)
             if distance == 0:
@@ -172,7 +191,7 @@ class Ball:
         color = ball_color[self.number]
         size_multiplied = texture_mult
         self.surf = pygame.Surface((size_multiplied, size_multiplied), pygame.SRCALPHA)
-        if self.number > 8:
+        if self.number > 8 and self.number < 100:
             # stripe
             self.surf.fill(ball_color[0])
             self.surf.fill(color, ((0, size_multiplied * 0.25), (self.surf.get_width(), self.surf.get_height() - size_multiplied / 2)))
@@ -180,11 +199,16 @@ class Ball:
             # solid
             self.surf.fill(color)
         
-        pygame.draw.circle(self.surf, ball_color[0], (size_multiplied / 2, size_multiplied / 2), size_multiplied * 0.25)
+        draw_number = True
+        if self.number > 100:
+            draw_number = False
+        
+        if draw_number:
+            pygame.draw.circle(self.surf, ball_color[0], (size_multiplied / 2, size_multiplied / 2), size_multiplied * 0.25)
 
-        if self.number != 0:
-            text = ball_numbers_font.render(str(self.number), True, (0,0,0))
-            self.surf.blit(text, (self.surf.get_width() / 2 - text.get_width() / 2, self.surf.get_height() / 2 - text.get_height() / 2))
+            if self.number != 0:
+                text = ball_numbers_font.render(str(self.number), True, (0,0,0))
+                self.surf.blit(text, (self.surf.get_width() / 2 - text.get_width() / 2, self.surf.get_height() / 2 - text.get_height() / 2))
 
         # apply mask
         mask = pygame.Surface((size_multiplied, size_multiplied), pygame.SRCALPHA)
@@ -230,7 +254,7 @@ class Ball:
 
 class CueBall(Ball):
     def __init__(self, pos=Vector2(0,0)):
-        super().__init__(pos, type=BallType.BALL_CUE)
+        super().__init__(pos)
         Ball._cue_ball = self
         self.is_out = False
 
@@ -252,7 +276,7 @@ class CueBall(Ball):
 
     def potted(self):
         self.is_out = True
-        Ball._potted_this_turn.append(self.type)
+        Ball._potted_this_turn.append(self.get_type())
         Ball._reg.remove(self)
 
 class Line:
