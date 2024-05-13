@@ -13,9 +13,7 @@ win: pygame.surface.Surface = None
 brake_random = Vector2(uniform(-10, 10),100)
 
 class PlayerCpu:
-    _reg: List['PlayerCpu'] = []
     def __init__(self, game_state: GameState, player: Player, dificulty = 3):
-        PlayerCpu._reg.append(self)
         self.game_state = game_state
         self.ball_type = BallType.BALL_NONE
 
@@ -206,6 +204,9 @@ class PlayerCpu:
                 available_positions.append((ball, hole, pos))
 
         # choose from available positions
+        if len(available_positions) == 0:
+            return
+
         cue_new_pos = choice(available_positions)[2]
 
         self.shot_type = 'ball in hand'

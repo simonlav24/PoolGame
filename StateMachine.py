@@ -40,6 +40,10 @@ class BallType(Enum):
             return BallType.BALL_SOLID
         return BallType.BALL_NONE
 
+class Player_Type(Enum):
+    HUMAN = 0
+    CPU = 1
+
 class Player(Enum):
     PLAYER_1 = 0
     PLAYER_2 = 1
@@ -58,6 +62,11 @@ class Player(Enum):
     def __repr__(self):
         return str(self)
 
+class Rules(Enum):
+    BALL_8 = 0
+    BALL_9 = 1
+    SNOOKER = 2
+    RUSSIAN = 3
 
 class GameState:
     def __init__(self, table_dims):
