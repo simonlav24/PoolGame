@@ -58,7 +58,7 @@ class Ball:
     _entered_balls: List['Ball'] = []
     _first_cue_touch: BallType = None
     _potted_this_turn: List[BallType] = []
-    _cue_ball: 'Ball' = None
+    _cue_ball: 'CueBall' = None
     def __init__(self, pos=Vector2(0,0), fake=False, number=0):
         self.pos = pos
         self.vel = Vector2(0,0)
@@ -91,9 +91,22 @@ class Ball:
             return BallType.BALL_SOLID
         elif self.number < 100:
             return BallType.BALL_STRIPE
-        
-        # todo: case for snooker
-        return BallType.SNOOKER_RED
+        else:
+            match self.number:
+                case 101:
+                    return BallType.SNOOKER_RED
+                case 102:
+                    return BallType.SNOOKER_YELLOW
+                case 103:
+                    return BallType.SNOOKER_GREEN
+                case 104:
+                    return BallType.SNOOKER_BROWN
+                case 105:
+                    return BallType.SNOOKER_BLUE
+                case 106:
+                    return BallType.SNOOKER_PINK
+                case 107:
+                    return BallType.SNOOKER_BLACK
 
     def set_vel(self, vel):
         self.vel = vel
@@ -265,7 +278,7 @@ class CueBall(Ball):
     def get_first_touch(self):
         return Ball._first_cue_touch
 
-    def get_potted_this_turn(self):
+    def get_potted_this_turn(self) -> List[BallType]:
         return Ball._potted_this_turn
 
     def set_pos(self, pos):

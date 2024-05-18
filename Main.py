@@ -36,7 +36,11 @@ class PoolGame:
         self.build_table()
         self.build_balls()
         
-        self.game_state = GameStateEightBall(self.table_dims)
+        match self.rules:
+            case Rules.BALL_8:
+                self.game_state = GameStateEightBall(self.table_dims)
+            case Rules.SNOOKER:
+                self.game_state = GameStateSnooker(self.table_dims)
 
         for key in self.cpu_config:
             player_type, dificulty = self.cpu_config[key]
@@ -182,8 +186,8 @@ class PoolGame:
                 offx = self.table_center[0] + self.pool_line * 0.5 - 2 * Ball._radius
                 offy = self.table_center[1] + Ball._radius
 
-                zero_pos = None
-                last_pos = None
+                self.table_zero_pos = None
+                self.table_last_pos = None
 
                 ball_count = 0
                 for i in range(6):
@@ -191,9 +195,9 @@ class PoolGame:
                         number = 101
                         ball_pos = Vector2(Ball._radius * i * sqrt(3) + offx, Ball._radius * j + offy)
                         if ball_count == 0:
-                            zero_pos = ball_pos
+                            self.table_zero_pos = ball_pos
                         if ball_count == 12:
-                            last_pos = ball_pos
+                            self.table_last_pos = ball_pos
                         Ball(ball_pos, number=number)
                         ball_count += 1
                 
@@ -201,11 +205,30 @@ class PoolGame:
                 Ball(self.table_center - (self.pool_line * 0.5, self.pool_line * 0.25), number=103)
                 Ball(self.table_center - (self.pool_line * 0.5, 0), number=104)
                 Ball(Vector2(self.table_center), number=105)
-                Ball(zero_pos + Vector2(-Ball._radius * 2, 0), number=106)
-                Ball(last_pos + Vector2(Ball._radius * 4, 0), number=107)
+                Ball(self.table_zero_pos + Vector2(-Ball._radius * 2, 0), number=106)
+                Ball(self.table_last_pos + Vector2(Ball._radius * 4, 0), number=107)
 
                 ball_pos = Vector2(self.table_center[0] - self.pool_line * 0.5 - Ball._radius * 4, self.table_center[1])
                 CueBall(ball_pos)
+
+    def respot_balls(self):
+        for ball in Ball._cue_ball.get_potted_this_turn():
+            if ball in [BallType.SNOOKER_YELLOW, BallType.SNOOKER_GREEN, 
+                        BallType.SNOOKER_BROWN, BallType.SNOOKER_BLUE, 
+                        BallType.SNOOKER_PINK, BallType.SNOOKER_BLACK]:
+                match ball:
+                    case BallType.SNOOKER_YELLOW:
+                        Ball(self.table_center - (self.pool_line * 0.5, -self.pool_line * 0.25), number=102)
+                    case BallType.SNOOKER_GREEN:
+                        Ball(self.table_center - (self.pool_line * 0.5, self.pool_line * 0.25), number=103)
+                    case BallType.SNOOKER_BROWN:
+                        Ball(self.table_center - (self.pool_line * 0.5, 0), number=104)
+                    case BallType.SNOOKER_BLUE:
+                        Ball(Vector2(self.table_center), number=105)
+                    case BallType.SNOOKER_PINK:
+                        Ball(self.table_zero_pos + Vector2(-Ball._radius * 2, 0), number=106)
+                    case BallType.SNOOKER_BLACK:
+                        Ball(self.table_last_pos + Vector2(Ball._radius * 4, 0), number=107)
 
     def main_loop(self):
         win = self.win
@@ -261,10 +284,11 @@ class PoolGame:
                 hole.step()
             if self.game_state.get_state() == State.WAIT_FOR_STABLE:
                 if Ball.check_stability():
-                    # determine next turn
+                    # game stable, determine next turn
                     self.game_state.update_potted(Ball._cue_ball.get_potted_this_turn())
                     self.game_state.first_touch = Ball._cue_ball.get_first_touch()
                     self.game_state.update()
+                    self.respot_balls()
                     Ball._cue_ball.new_turn()
             
             for cpu in self.cpus:
@@ -299,10 +323,7 @@ class PoolGame:
                 win.blit(ball.surf, pos)
 
             # temporarily display info
-            if self.game_state.get_state() != State.GAME_OVER:
-                text = f'{str(self.game_state.get_player())}: {self.game_state.player_ball_type[self.game_state.get_player()]}'
-            else:
-                text = f'Game Over, {self.game_state.player_winner} Won'
+            text = self.game_state.get_info()
             player_turn_surf = font1.render(text, True, (255,255,255))
             win.blit(player_turn_surf, (10,10))
 
@@ -325,10 +346,10 @@ if __name__ == '__main__':
 
     cpu_config = {
         Player.PLAYER_1: (Player_Type.HUMAN, 3),
-        Player.PLAYER_2: (Player_Type.CPU, 2),
+        Player.PLAYER_2: (Player_Type.HUMAN, 2),
     }
 
-    game = PoolGame(Rules.BALL_8, cpu_config=cpu_config, win=win, clock=clock)
+    game = PoolGame(Rules.SNOOKER, cpu_config=cpu_config, win=win, clock=clock)
     game.initialize()
     game.main_loop()
 
