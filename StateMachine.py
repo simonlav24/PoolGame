@@ -90,31 +90,40 @@ class GameState:
         self.potted_this_turn: List[BallType] = []
         self.first_touch: BallType = None
 
-        self.type_potted = {
-            BallType.BALL_SOLID: 0,
-            BallType.BALL_STRIPE: 0
+        self.score = {
+            Player.PLAYER_1: 0,
+            Player.PLAYER_2: 0,
         }
+
         self.player_winner: Player = None
         self.round_count = 0
         self.table_dims = table_dims
-
-    def update_potted(self, potted: List[BallType]):
-        self.potted_this_turn = potted
-        for ball_tpye in self.potted_this_turn:
-            if ball_tpye in [BallType.BALL_CUE, BallType.BALL_BLACK]:
-                continue
-            self.type_potted[ball_tpye] += 1
-
+    
     def get_state(self) -> State:
         return self.current_state
     
     def get_player(self) -> Player:
         return self.player_turn
+    
+    def update(self):
+        pass
+
+class GameStateSnooker(GameState):
+    pass
+
+class GameStateEightBall(GameState):
+    def update_potted(self, potted: List[BallType]):
+        ''' update this of balls potted this turn before update '''
+        self.potted_this_turn = potted
+        for ball_tpye in self.potted_this_turn:
+            if ball_tpye in [BallType.BALL_CUE, BallType.BALL_BLACK]:
+                continue
+            self.score[self.get_player()] += 1
 
     def is_current_player_finished(self) -> bool:
         if not self.player_determined:
             return False
-        return self.type_potted[self.player_ball_type[self.get_player()]] == 7
+        return self.score[self.get_player()] == 7
 
     def update(self):
         next_state: State = None
@@ -189,7 +198,7 @@ class GameState:
                         next_state = State.GAME_OVER
                 if advance_turn:
                     self.player_turn = self.player_turn.next()
-                print(f'State: {next_state}, score: {self.type_potted}')
+                print(f'State: {next_state}, score: {self.score}')
                 self.round_count += 1
 
             case State.MOVING_CUE_BALL:

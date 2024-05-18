@@ -36,7 +36,7 @@ class PoolGame:
         self.build_table()
         self.build_balls()
         
-        self.game_state = GameState(self.table_dims)
+        self.game_state = GameStateEightBall(self.table_dims)
 
         for key in self.cpu_config:
             player_type, dificulty = self.cpu_config[key]
