@@ -195,9 +195,9 @@ class PoolGame:
                         number = 101
                         ball_pos = Vector2(Ball._radius * i * sqrt(3) + offx, Ball._radius * j + offy)
                         if ball_count == 0:
-                            self.table_zero_pos = ball_pos
+                            self.table_zero_pos = ball_pos.copy()
                         if ball_count == 12:
-                            self.table_last_pos = ball_pos
+                            self.table_last_pos = ball_pos.copy()
                         Ball(ball_pos, number=number)
                         ball_count += 1
                 
@@ -212,23 +212,21 @@ class PoolGame:
                 CueBall(ball_pos)
 
     def respot_balls(self):
-        for ball in Ball._cue_ball.get_potted_this_turn():
-            if ball in [BallType.SNOOKER_YELLOW, BallType.SNOOKER_GREEN, 
-                        BallType.SNOOKER_BROWN, BallType.SNOOKER_BLUE, 
-                        BallType.SNOOKER_PINK, BallType.SNOOKER_BLACK]:
-                match ball:
-                    case BallType.SNOOKER_YELLOW:
-                        Ball(self.table_center - (self.pool_line * 0.5, -self.pool_line * 0.25), number=102)
-                    case BallType.SNOOKER_GREEN:
-                        Ball(self.table_center - (self.pool_line * 0.5, self.pool_line * 0.25), number=103)
-                    case BallType.SNOOKER_BROWN:
-                        Ball(self.table_center - (self.pool_line * 0.5, 0), number=104)
-                    case BallType.SNOOKER_BLUE:
-                        Ball(Vector2(self.table_center), number=105)
-                    case BallType.SNOOKER_PINK:
-                        Ball(self.table_zero_pos + Vector2(-Ball._radius * 2, 0), number=106)
-                    case BallType.SNOOKER_BLACK:
-                        Ball(self.table_last_pos + Vector2(Ball._radius * 4, 0), number=107)
+        respot_balls = self.game_state.get_respot()
+        for ball in respot_balls:
+            match ball:
+                case BallType.SNOOKER_YELLOW:
+                    Ball(self.table_center - (self.pool_line * 0.5, -self.pool_line * 0.25), number=102)
+                case BallType.SNOOKER_GREEN:
+                    Ball(self.table_center - (self.pool_line * 0.5, self.pool_line * 0.25), number=103)
+                case BallType.SNOOKER_BROWN:
+                    Ball(self.table_center - (self.pool_line * 0.5, 0), number=104)
+                case BallType.SNOOKER_BLUE:
+                    Ball(Vector2(self.table_center), number=105)
+                case BallType.SNOOKER_PINK:
+                    Ball(self.table_zero_pos + Vector2(-Ball._radius * 2, 0), number=106)
+                case BallType.SNOOKER_BLACK:
+                    Ball(self.table_last_pos + Vector2(Ball._radius * 4, 0), number=107)
 
     def main_loop(self):
         win = self.win

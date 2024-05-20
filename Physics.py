@@ -60,6 +60,7 @@ class Ball:
     _potted_this_turn: List[BallType] = []
     _cue_ball: 'CueBall' = None
     def __init__(self, pos=Vector2(0,0), fake=False, number=0):
+        
         self.pos = pos
         self.vel = Vector2(0,0)
         self.acc = Vector2(0,0)
@@ -71,6 +72,7 @@ class Ball:
             Ball._reg.append(self)
         self.number = number
         self.create_surf()
+        if not self.is_fake: print(f'--- placing ball {self.get_type()} in position {self.pos}')
     
     def __str__(self):
         if self.is_fake:
