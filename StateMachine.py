@@ -100,9 +100,14 @@ class Player(Enum):
     def __repr__(self):
         return str(self)
 
+class SnookerInnerState(Enum):
+    SNOOKER_RED_ON = 0
+    SNOOKER_FREE_BALL = 1
+    SNOOKER_LATE_GAME = 2
+
 class Rules(Enum):
-    BALL_8 = 0
-    BALL_9 = 1
+    EIGHT_BALL = 0
+    NINE_BALL = 1
     SNOOKER = 2
     RUSSIAN = 3
 
@@ -149,11 +154,6 @@ class GameState:
 
     def get_respot(self) -> List[BallType]:
         return []
-
-class SnookerInnerState(Enum):
-    SNOOKER_RED_ON = 0
-    SNOOKER_FREE_BALL = 1
-    SNOOKER_LATE_GAME = 2
 
 class GameStateSnooker(GameState):
     def __init__(self, table_dims):
@@ -338,8 +338,6 @@ class GameStateSnooker(GameState):
                 next_state = State.GAME_OVER
         
         self.current_state = next_state
-
-
 
 class GameStateEightBall(GameState):
     def update_potted(self, potted: List[BallType]):

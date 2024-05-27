@@ -6,21 +6,17 @@ from Calc import check_line_circle_collision, closest_point_on_line
 from typing import List, Tuple
 from random import uniform, randint, choice
 
-# Todo:
-### a function that calculates the angle to force a target ball in target angle
-
 win: pygame.surface.Surface = None
 brake_random = Vector2(uniform(-10, 10),100)
 
 class PlayerCpu:
     def __init__(self, game_state: GameState, player: Player, dificulty = 3):
         self.game_state = game_state
-        self.ball_type = BallType.BALL_NONE
 
         self.targets = []
         self.best_target = []
         self.timer = 0
-        self.determined = False
+
         self.player = player
         self.debug = True
         self.dificulty = dificulty # range = [1, 2, 3]
@@ -82,18 +78,7 @@ class PlayerCpu:
         return self.direction
     
     def check_ball_validity(self, ball: Ball) -> bool:
-        if self.determined and self.game_state.is_current_player_finished():
-            self.ball_type = BallType.BALL_BLACK
-        
-        if self.determined:
-            if self.ball_type != ball.get_type():
-                return False
-        else:
-            if ball.get_type() == BallType.BALL_BLACK:
-                return False
-        if ball is Ball._cue_ball:
-            return False
-        return True
+        ...
 
     def step_shoot_ball(self) -> bool:
         available_balls_holes = []
@@ -178,7 +163,7 @@ class PlayerCpu:
             return False
 
         # check for no line around
-        # todo
+        # TODO
 
         return True
 
@@ -218,13 +203,14 @@ class PlayerCpu:
             cue_ball.set_pos(cue_new_pos)
         self.game_state.update()
 
+    def pre_step(self):
+        ...
+
     def step(self): 
         self.targets = []
         self.best_target = None
 
-        if not self.determined and self.game_state.player_determined:
-            self.ball_type = self.game_state.player_ball_type[self.player]
-            self.determined = True
+        self.pre_step()
 
         # check for current turn
         if not self.game_state.get_player() == self.player:
@@ -249,7 +235,7 @@ class PlayerCpu:
             return
         
         # try to bank shot
-        # todo
+        # TODO
 
         # try to touch ball
         if self.step_touch():
@@ -294,4 +280,33 @@ class PlayerCpu:
             pygame.draw.line(win, (0,0,255), self.best_target[0].pos, self.best_target[1].target_pos)
 
 
+class PlayerCpuEightBall(PlayerCpu):
+    def __init__(self, game_state: GameState, player: Player, dificulty=3):
+        super().__init__(game_state, player, dificulty)
+        self.determined = False
+        self.ball_type = BallType.BALL_NONE
     
+    def check_ball_validity(self, ball: Ball) -> bool:
+        if self.determined and self.game_state.is_current_player_finished():
+            self.ball_type = BallType.BALL_BLACK
+        
+        if self.determined:
+            if self.ball_type != ball.get_type():
+                return False
+        else:
+            if ball.get_type() == BallType.BALL_BLACK:
+                return False
+        if ball is Ball._cue_ball:
+            return False
+        return True
+    
+    def pre_step(self):
+        if not self.determined and self.game_state.player_determined:
+            self.ball_type = self.game_state.player_ball_type[self.player]
+            self.determined = True
+
+class PlayerCpuSnooker(PlayerCpu):
+    def check_ball_validity(self, ball: Ball) -> bool:
+        # TODO: determine state and inner state and consider ball
+        pass
+    # TODO: pick the best valued ball when free ball

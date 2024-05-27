@@ -12,7 +12,6 @@ from Physics import Ball, Line, Hole, CueBall
 from Calc import *
 from StateMachine import *
 import Cpu
-from Cpu import PlayerCpu
 import Guide
 from Guide import AimGuide
 
@@ -27,7 +26,7 @@ class PoolGame:
         self.pool_line = 450
         self.table_dims = None
         self.game_state = None
-        self.cpus: List[PlayerCpu] = []
+        self.cpus: List[Cpu.PlayerCpu] = []
         self.rules = rules
 
         self.table_center = Vector2(win.get_width() / 2, win.get_height() / 2)
@@ -37,7 +36,7 @@ class PoolGame:
         self.build_balls()
         
         match self.rules:
-            case Rules.BALL_8:
+            case Rules.EIGHT_BALL:
                 self.game_state = GameStateEightBall(self.table_dims)
             case Rules.SNOOKER:
                 self.game_state = GameStateSnooker(self.table_dims)
@@ -45,7 +44,11 @@ class PoolGame:
         for key in self.cpu_config:
             player_type, dificulty = self.cpu_config[key]
             if player_type == Player_Type.CPU:
-                cpu_player = PlayerCpu(self.game_state, key, dificulty=dificulty)
+                match self.rules:
+                    case Rules.EIGHT_BALL:
+                        cpu_player = Cpu.PlayerCpuEightBall(self.game_state, key, dificulty=dificulty)
+                    case Rules.SNOOKER:
+                        cpu_player = Cpu.PlayerCpuSnooker(self.game_state, key, dificulty=dificulty)
                 self.cpus.append(cpu_player)
 
         self.guide = AimGuide(self.game_state, [cpu.player for cpu in self.cpus])
@@ -136,7 +139,7 @@ class PoolGame:
     def build_balls(self):
         # build balls
         match self.rules:
-            case Rules.BALL_8:
+            case Rules.EIGHT_BALL:
                 numbers = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15]
                 shuffle(numbers)
 
@@ -157,7 +160,7 @@ class PoolGame:
                 ball_pos = Vector2(self.table_center[0] - self.pool_line * 0.5, self.table_center[1])
                 CueBall(ball_pos)
 
-            case Rules.BALL_9:
+            case Rules.NINE_BALL:
                 numbers = [2, 3, 4, 5, 6, 7, 8]
                 shuffle(numbers)
 
@@ -349,7 +352,7 @@ if __name__ == '__main__':
 
     cpu_config = {
         Player.PLAYER_1: (Player_Type.HUMAN, 3),
-        Player.PLAYER_2: (Player_Type.HUMAN, 2),
+        Player.PLAYER_2: (Player_Type.CPU, 3),
     }
 
     game = PoolGame(Rules.SNOOKER, cpu_config=cpu_config, win=win, clock=clock)
