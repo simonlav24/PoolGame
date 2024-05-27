@@ -246,6 +246,11 @@ class PoolGame:
                             cpu.debug = not cpu.debug
                     if event.key == pygame.K_s:
                         Physics.draw_solids = not Physics.draw_solids
+                    if event.key == pygame.K_DELETE:
+                        mouse_pos = Vector2(pygame.mouse.get_pos())
+                        for ball in Ball._reg:
+                            if ball.pos.distance_to(mouse_pos) < Ball._radius:
+                                ball.potted()
                 if event.type == pygame.KEYUP:
                     debug_move_ball = None
                 if self.game_state.get_state() == State.PLAY:
