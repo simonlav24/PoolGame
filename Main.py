@@ -342,7 +342,7 @@ if __name__ == '__main__':
     pygame.init()
     win = pygame.display.set_mode((1280, 800))
     clock = pygame.time.Clock()
-
+ 
     font1 = pygame.font.SysFont('Arial', 16)
 
     Physics.win = win

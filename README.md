@@ -18,8 +18,8 @@ A practice in game developement, physics, state machine, rules enforcement and A
 
 ### Todo:
 
-* [ ] late game snooker
-* [ ] no respotting (check) after all red in
+* [X] late game snooker
+* [X] no respotting (check) after all red in
 * [ ] adjust cpu player for snooker rules
-* [ ] respot balls not working
-* [ ] foul points to opponent or minus to self
+* [X] respot balls not working
+* [X] foul points to opponent or minus to self

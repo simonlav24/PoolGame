@@ -1,6 +1,6 @@
 import pygame
 from pygame.math import Vector2
-from StateMachine import GameState, BallType, Player, State
+from StateMachine import GameState, BallType, Player, State, SnookerInnerState
 from Physics import Ball, CueBall, Hole
 from Calc import check_line_circle_collision, closest_point_on_line
 from typing import List, Tuple
@@ -78,6 +78,7 @@ class PlayerCpu:
         return self.direction
     
     def check_ball_validity(self, ball: Ball) -> bool:
+        ''' check if the ball is okay for potting '''
         ...
 
     def step_shoot_ball(self) -> bool:
@@ -306,7 +307,19 @@ class PlayerCpuEightBall(PlayerCpu):
             self.determined = True
 
 class PlayerCpuSnooker(PlayerCpu):
+    def __init__(self, game_state: GameState, player: Player, dificulty=3):
+
+        super().__init__(game_state, player, dificulty)
+
     def check_ball_validity(self, ball: Ball) -> bool:
-        # TODO: determine state and inner state and consider ball
-        pass
-    # TODO: pick the best valued ball when free ball
+        match self.game_state.inner_state:
+            case SnookerInnerState.SNOOKER_RED_ON:
+                return ball.get_type() == BallType.SNOOKER_RED
+        
+            case SnookerInnerState.SNOOKER_FREE_BALL:
+                return ball.get_type() != BallType.SNOOKER_RED
+        
+            case SnookerInnerState.SNOOKER_LATE_GAME:
+                return ball.get_type() == self.game_state.current_ball
+
+        # TODO: pick the best valued ball when free ball

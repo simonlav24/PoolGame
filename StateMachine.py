@@ -133,6 +133,9 @@ class GameState:
         self.player_winner: Player = None
         self.round_count = 0
         self.table_dims = table_dims
+
+        self.inner_state = None
+        self.current_ball: BallType = None
     
     def get_state(self) -> State:
         return self.current_state
@@ -141,6 +144,7 @@ class GameState:
         return self.player_turn
     
     def update(self):
+        ''' end of turn calculations. determine score, fauls, next player '''
         ...
 
     def update_potted(self, potted: List[BallType]):
@@ -161,6 +165,7 @@ class GameStateSnooker(GameState):
         self.reds_are_on = True
         self.red_count = 0
         self.inner_state = SnookerInnerState.SNOOKER_RED_ON
+        self.inner_state_end_of_turn = SnookerInnerState.SNOOKER_RED_ON
         self.current_ball = BallType.SNOOKER_RED
     
     def get_info(self) -> str:
@@ -195,7 +200,7 @@ class GameStateSnooker(GameState):
     def get_respot(self) -> List[BallType]:
         colored_potted = [i for i in self.potted_this_turn if i != BallType.SNOOKER_RED]
         respot = []
-        match self.inner_state:
+        match self.inner_state_end_of_turn:
             case SnookerInnerState.SNOOKER_RED_ON:
                 respot = colored_potted
             case SnookerInnerState.SNOOKER_FREE_BALL:
@@ -223,20 +228,20 @@ class GameStateSnooker(GameState):
                 print(f'{self.potted_this_turn=}')
 
                 # determine state cases
-                self.inner_state = SnookerInnerState.SNOOKER_RED_ON
+                self.inner_state_end_of_turn = SnookerInnerState.SNOOKER_RED_ON
                 if not self.is_red_done():
                     if self.reds_are_on:
-                        self.inner_state = SnookerInnerState.SNOOKER_RED_ON
+                        self.inner_state_end_of_turn = SnookerInnerState.SNOOKER_RED_ON
                     else:
-                        self.inner_state = SnookerInnerState.SNOOKER_FREE_BALL
+                        self.inner_state_end_of_turn = SnookerInnerState.SNOOKER_FREE_BALL
                 else:
                     if not self.reds_are_on:
-                        self.inner_state = SnookerInnerState.SNOOKER_FREE_BALL
+                        self.inner_state_end_of_turn = SnookerInnerState.SNOOKER_FREE_BALL
                     else:
-                        self.inner_state = SnookerInnerState.SNOOKER_LATE_GAME
+                        self.inner_state_end_of_turn = SnookerInnerState.SNOOKER_LATE_GAME
 
                 score_this_turn = 0
-                match self.inner_state:
+                match self.inner_state_end_of_turn:
                     case SnookerInnerState.SNOOKER_RED_ON:
                         balls_on = [BallType.SNOOKER_RED]
                         if not self.first_touch in balls_on:
@@ -289,7 +294,7 @@ class GameStateSnooker(GameState):
                         if len(self.potted_this_turn) > 1:
                             # foul: potted illegal
                             foul = Foul.POTTED_ILLEGAL
-                        if len(self.potted_this_turn) == 1:
+                        if len(self.potted_this_turn) >= 1:
                             potted = self.potted_this_turn[0]
                             if potted != self.current_ball:
                                 # foul: potted illegal
@@ -310,6 +315,20 @@ class GameStateSnooker(GameState):
                     # foul: potted cue ball
                     self.reds_are_on = True
                     foul = Foul.POTTED_CUE
+
+                # determine inner state for next turn
+                if self.inner_state_end_of_turn == SnookerInnerState.SNOOKER_LATE_GAME:
+                    self.inner_state = SnookerInnerState.SNOOKER_LATE_GAME
+                else:
+                    if self.inner_state_end_of_turn == SnookerInnerState.SNOOKER_FREE_BALL and self.is_red_done():
+                        self.inner_state = SnookerInnerState.SNOOKER_LATE_GAME
+                    elif self.reds_are_on:
+                        self.inner_state = SnookerInnerState.SNOOKER_RED_ON
+                    else:
+                        if foul != Foul.NONE:
+                            self.inner_state = SnookerInnerState.SNOOKER_RED_ON
+                        else:
+                            self.inner_state = SnookerInnerState.SNOOKER_FREE_BALL
 
                 # resolve foul
                 if foul != Foul.NONE:
@@ -338,6 +357,7 @@ class GameStateSnooker(GameState):
                 next_state = State.GAME_OVER
         
         self.current_state = next_state
+        print(f'--------------End of turn, state: {self.inner_state}')
 
 class GameStateEightBall(GameState):
     def update_potted(self, potted: List[BallType]):
