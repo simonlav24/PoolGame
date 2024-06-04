@@ -31,6 +31,10 @@ class PoolGame:
         self.rules = rules
 
         self.table_center = Vector2(win.get_width() / 2, win.get_height() / 2)
+        Ball._lamps = [
+            self.table_center + Vector2(300, 0),
+            self.table_center + Vector2(-300, 0),
+            ]
 
     def initialize(self):
         self.build_table()
@@ -325,7 +329,7 @@ if __name__ == '__main__':
 
     cpu_config = {
         Player.PLAYER_1: (Player_Type.HUMAN, 3),
-        Player.PLAYER_2: (Player_Type.CPU, 2),
+        Player.PLAYER_2: (Player_Type.HUMAN, 2),
     }
 
     game = PoolGame(Rules.BALL_8, cpu_config=cpu_config, win=win, clock=clock)
