@@ -312,6 +312,8 @@ class PlayerCpuSnooker(PlayerCpu):
         super().__init__(game_state, player, dificulty)
 
     def check_ball_validity(self, ball: Ball) -> bool:
+        if ball is Ball._cue_ball:
+            return False
         match self.game_state.inner_state:
             case SnookerInnerState.SNOOKER_RED_ON:
                 return ball.get_type() == BallType.SNOOKER_RED
