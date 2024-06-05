@@ -30,6 +30,10 @@ class PoolGame:
         self.rules = rules
 
         self.table_center = Vector2(win.get_width() / 2, win.get_height() / 2)
+        Ball._lamps = [
+            self.table_center + Vector2(300, 0),
+            self.table_center + Vector2(-300, 0),
+            ]
 
     def initialize(self):
         self.build_table()

@@ -267,7 +267,7 @@ class GameStateSnooker(GameState):
                             foul = Foul.TOUCHED_ILLEGAL_BALL
 
                         # check potted: check if potted single colored ball
-                        if len(self.potted_this_turn) == 1:
+                        if len(self.potted_this_turn) == 1 and not BallType.BALL_CUE in self.potted_this_turn:
                             potted = self.potted_this_turn[0]
                             if potted == BallType.SNOOKER_RED:
                                 # foul: potted illegal

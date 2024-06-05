@@ -2,7 +2,7 @@
 geometrical calculations module
 '''
 
-from pygame import Vector2
+from pygame import Vector2, transform
 from math import sqrt, radians, tan
 
 def find_collision_centers_on_line(target_pos: Vector2, cue_pos: Vector2, line_direction: Vector2, radius: float):
@@ -108,4 +108,7 @@ def find_collision_position_ball_to_line(p_a: Vector2, p_b: Vector2, p_c: Vector
 
     return collision_point
 
-
+def gaussian_blur(surface, radius):
+    scaled_surface = transform.smoothscale(surface, (surface.get_width() // radius, surface.get_height() // radius))
+    scaled_surface = transform.smoothscale(scaled_surface, (surface.get_width(), surface.get_height()))
+    return scaled_surface

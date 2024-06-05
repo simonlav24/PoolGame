@@ -3,6 +3,8 @@ import pygame
 from pygame.math import Vector2
 from typing import List, Tuple
 from StateMachine import BallType
+from math import atan2, degrees
+from Calc import gaussian_blur
 
 ball_numbers_font = None
 win: pygame.Surface = None
@@ -59,6 +61,7 @@ class Ball:
     _first_cue_touch: BallType = None
     _potted_this_turn: List[BallType] = []
     _cue_ball: 'CueBall' = None
+    _lamps: List[Vector2] = []
     def __init__(self, pos=Vector2(0,0), fake=False, number=0):
         
         self.pos = pos
@@ -138,6 +141,7 @@ class Ball:
         Ball._potted_this_turn.append(self.get_type())
         Ball._reg.remove(self)
 
+    @staticmethod
     def resolve_line_collision():
         for ball in Ball._reg:
             for line in Line._reg:
@@ -156,6 +160,7 @@ class Ball:
                     ball.pos -= overlap * (ball.pos - b.pos) / distance
                     Ball._collisions.append((ball, b))
 
+    @staticmethod
     def resolve_ball_collisions():
         for ball in Ball._reg:
             for target in Ball._reg:
@@ -202,6 +207,39 @@ class Ball:
         Ball._fakes = []
         Ball._collisions = []
 
+    def draw_shadows(self):
+        shadow_size = 128
+        
+        for lamp in Ball._lamps:
+            shadow_surf = pygame.Surface((shadow_size, shadow_size), pygame.SRCALPHA)
+            # calc distance to lamp
+            dist = self.pos.distance_to(lamp)
+            skew = 0.002 * dist + 1.0
+            d = shadow_size / 3
+            w = skew * d
+            h = d
+            x = shadow_size / 2 - w / 2
+            y = shadow_size / 2 - h / 2
+            pygame.draw.ellipse(shadow_surf, (0,0,0), (x, y, w, h))
+
+            # rotate
+            direction = (self.pos - lamp)
+            if direction == Vector2(0,0):
+                angle = 0
+            else:
+                direction = direction.normalize()
+                angle = degrees(atan2(*direction)) + 90
+            offset = direction * (w / 2)
+            shadow_surf = pygame.transform.rotate(shadow_surf, angle)
+            
+            factor = (Ball._radius * 6.0 ) / shadow_size
+            offset = offset * factor
+
+            shadow_surf = pygame.transform.smoothscale_by(shadow_surf, factor)
+            shadow_surf = gaussian_blur(shadow_surf, 3)
+            shadow_surf.fill((0,0,0,230), special_flags=pygame.BLEND_RGBA_SUB)
+            win.blit(shadow_surf, self.pos - Vector2(shadow_surf.get_size()) / 2 + offset)
+
     def create_surf(self):
         color = ball_color[self.number]
         size_multiplied = texture_mult
@@ -240,6 +278,7 @@ class Ball:
             pos = self.pos - Vector2(reflection_map.get_width() / 2, reflection_map.get_height() / 2)
             win.blit(reflection_map, pos)
 
+    @staticmethod
     def step_balls():
         for i in range(5):
             for ball in Ball._reg:
@@ -252,17 +291,21 @@ class Ball:
                 ball.potted()
             Ball._ball_to_remove.clear()
 
+    @staticmethod
     def check_stability():
         for ball in Ball._reg:
             if not ball.stable:
                 return False
         return True
 
+    @staticmethod
     def draw_balls():
-        if loaded_textures:
-            for ball in Ball._reg:
-                pos = ball.pos - Vector2(shadow_map.get_width() / 2, shadow_map.get_height() / 2)
-                win.blit(shadow_map, pos)
+        # if loaded_textures:
+        #     for ball in Ball._reg:
+        #         pos = ball.pos - Vector2(shadow_map.get_width() / 2, shadow_map.get_height() / 2)
+        #         win.blit(shadow_map, pos)
+        for ball in Ball._reg:
+            ball.draw_shadows()
         for ball in Ball._reg:
             ball.draw()
         
@@ -309,6 +352,7 @@ class Line:
         pygame.draw.circle(win, color, self.end, Line._radius)
         pygame.draw.line(win, (255,0,0), self.start, self.end)
 
+    @staticmethod
     def draw_lines():
         if not draw_solids:
             return
