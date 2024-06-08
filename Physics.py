@@ -5,6 +5,7 @@ from typing import List, Tuple
 from StateMachine import BallType
 from math import atan2, degrees
 from Calc import gaussian_blur
+from random import randint
 
 ball_numbers_font = None
 win: pygame.Surface = None
@@ -13,6 +14,10 @@ draw_solids = False
 BALL_RADIUS = 13
 texture_mult = 64
 loaded_textures = True
+
+texture_size = 50
+texture_grid = 32
+
 try:
     reflection_map = pygame.image.load(r'Assets/ReflectionMap.png')
     reflection_map = pygame.transform.smoothscale(reflection_map, (BALL_RADIUS * 2, BALL_RADIUS * 2))
@@ -73,6 +78,8 @@ class Ball:
         else:
             Ball._reg.append(self)
         self.number = number
+
+        self.create_solid_surface()
         self.create_surf()
     
     def __str__(self):
@@ -118,6 +125,11 @@ class Ball:
         
         if self.vel == Vector2(0,0):
             self.stable = True
+        
+        # self.texture_x += self.vel.magnitude() / 2
+
+        self.texture_x += self.vel.x / 2
+        self.texture_y += self.vel.y / 2
         
         self.acc *= 0
     
@@ -225,7 +237,7 @@ class Ball:
             shadow_surf.fill((0,0,0,230), special_flags=pygame.BLEND_RGBA_SUB)
             win.blit(shadow_surf, self.pos - Vector2(shadow_surf.get_size()) / 2 + offset)
 
-    def create_surf(self):
+    def create_solid_surface(self):
         color = ball_color[self.number]
         size_multiplied = texture_mult
         self.surf = pygame.Surface((size_multiplied, size_multiplied), pygame.SRCALPHA)
@@ -257,8 +269,25 @@ class Ball:
         # scale
         self.surf = pygame.transform.smoothscale_by(self.surf, (2 * Ball._radius) / size_multiplied)
 
-    def draw(self):
+    def create_surf(self):
+        self.texture = pygame.image.load(f'Assets/ball_{self.number}_spin.png')
+        self.texture.set_colorkey((0, 0, 0))
+        self.texture = pygame.transform.smoothscale_by(self.texture, (Ball._radius * 2) / texture_size)
+        self.texture_x = randint(0, texture_grid)
+        self.texture_y = randint(0, texture_grid)
+
+    def draw_spin(self):
+        x = int(self.texture_x) % texture_grid
+        y = int(self.texture_y) % texture_grid
+        ball_size = Ball._radius * 2
+        win.blit(self.texture, self.pos - Vector2(Ball._radius, Ball._radius), (ball_size * x, ball_size * y, ball_size, ball_size))
+
+    def draw_solid(self):
         win.blit(self.surf, self.pos - Vector2(Ball._radius, Ball._radius))
+
+    def draw(self):
+        # self.draw_solid()
+        self.draw_spin()
         if loaded_textures:
             pos = self.pos - Vector2(reflection_map.get_width() / 2, reflection_map.get_height() / 2)
             win.blit(reflection_map, pos)
