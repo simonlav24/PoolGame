@@ -81,6 +81,9 @@ class Ball:
 
         self.create_solid_surface()
         self.create_surf()
+
+        self.spin_angle = 0
+        self.spin_dir = Vector2(1,0)
     
     def __str__(self):
         if self.is_fake:
@@ -126,10 +129,20 @@ class Ball:
         if self.vel == Vector2(0,0):
             self.stable = True
         
-        # self.texture_x += self.vel.magnitude() / 2
+        self.texture_x += self.vel.magnitude() / 2
 
-        self.texture_x += self.vel.x / 2
-        self.texture_y += self.vel.y / 2
+        self.spin_angle = self.spin_angle + (0 - self.spin_angle) * 0.2
+        if(self.spin_angle > 0.01):
+            self.texture_y += self.spin_angle
+        else:
+            self.spin_angle = 0
+
+        if not self.vel.magnitude() < 0.1:
+            vel_norm = self.vel.normalize()
+            self.spin_dir = self.spin_dir + (vel_norm - self.spin_dir) * 0.01
+
+        # self.texture_x += self.vel.x / 2
+        # self.texture_y += self.vel.y / 2
         
         self.acc *= 0
     
@@ -275,12 +288,23 @@ class Ball:
         self.texture = pygame.transform.smoothscale_by(self.texture, (Ball._radius * 2) / texture_size)
         self.texture_x = randint(0, texture_grid)
         self.texture_y = randint(0, texture_grid)
+        self.ball_texture = pygame.Surface((self._radius * 2, self._radius * 2), pygame.SRCALPHA)
 
     def draw_spin(self):
         x = int(self.texture_x) % texture_grid
         y = int(self.texture_y) % texture_grid
         ball_size = Ball._radius * 2
-        win.blit(self.texture, self.pos - Vector2(Ball._radius, Ball._radius), (ball_size * x, ball_size * y, ball_size, ball_size))
+        
+        self.ball_texture.fill((0,0,0,0))
+        self.ball_texture.blit(self.texture, (0,0), (ball_size * x, ball_size * y, ball_size, ball_size), special_flags=pygame.BLEND_RGBA_ADD)
+
+        # surf = self.ball_texture
+        # if not self.vel.magnitude() < 0.1:
+        angle = self.spin_dir.as_polar()[1]
+        surf = pygame.transform.rotate(self.ball_texture, angle)
+
+        win.blit(surf, self.pos - Vector2(surf.get_size()) / 2.0)
+        pygame.draw.line(win, (255,0,0), self.pos, self.pos + self.spin_dir * 20)
 
     def draw_solid(self):
         win.blit(self.surf, self.pos - Vector2(Ball._radius, Ball._radius))
