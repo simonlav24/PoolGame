@@ -5,7 +5,7 @@ from typing import List, Tuple
 from StateMachine import BallType
 from math import atan2, degrees
 from Calc import gaussian_blur
-from random import randint
+from random import randint, choice
 
 ball_numbers_font = None
 win: pygame.Surface = None
@@ -83,6 +83,7 @@ class Ball:
         self.create_surf()
 
         self.spin_angle = 0
+        self.vel_direction = Vector2(1,0)
         self.spin_dir = Vector2(1,0)
     
     def __str__(self):
@@ -137,10 +138,14 @@ class Ball:
         else:
             self.spin_angle = 0
 
-        if not self.vel.magnitude() < 0.1:
-            vel_norm = self.vel.normalize()
-            self.spin_dir = self.spin_dir + (vel_norm - self.spin_dir) * 0.01
+        if self.vel[0] != 0 and self.vel[1] != 0:
+            self.vel_direction = self.vel.normalize()
 
+        self.spin_dir = self.spin_dir + (self.vel_direction - self.spin_dir) * 0.1
+
+        self.texture_y = self.texture_y + (self.texture_y_target - self.texture_y) * 0.1
+        if self.number == 12:
+            print(self.texture_y, self.texture_y)
         # self.texture_x += self.vel.x / 2
         # self.texture_y += self.vel.y / 2
         
@@ -197,6 +202,10 @@ class Ball:
                     not ball.is_fake and not target.is_fake,
                     (ball.get_type() == BallType.BALL_CUE or target.get_type() == BallType.BALL_CUE)]):
                 Ball._first_cue_touch = target.get_type() if target.get_type() != BallType.BALL_CUE else ball.get_type()
+
+            ball.texture_y_target += choice([-1, 1]) * 4
+            target.texture_y_target += choice([-1, 1]) * 4
+            # print(ball.texture_y_target)
 
             distance = ball.pos.distance_to(target.pos)
             if distance == 0:
@@ -286,8 +295,9 @@ class Ball:
         self.texture = pygame.image.load(f'Assets/ball_{self.number}_spin.png')
         self.texture.set_colorkey((0, 0, 0))
         self.texture = pygame.transform.smoothscale_by(self.texture, (Ball._radius * 2) / texture_size)
-        self.texture_x = randint(0, texture_grid)
-        self.texture_y = randint(0, texture_grid)
+        self.texture_x: float = randint(0, texture_grid)
+        self.texture_y: float = randint(0, texture_grid)
+        self.texture_y_target = self.texture_y
         self.ball_texture = pygame.Surface((self._radius * 2, self._radius * 2), pygame.SRCALPHA)
 
     def draw_spin(self):
@@ -301,10 +311,11 @@ class Ball:
         # surf = self.ball_texture
         # if not self.vel.magnitude() < 0.1:
         angle = self.spin_dir.as_polar()[1]
-        surf = pygame.transform.rotate(self.ball_texture, angle)
+        surf = pygame.transform.rotozoom(self.ball_texture, - angle, 1.0)
+        # surf = self.ball_texture
 
         win.blit(surf, self.pos - Vector2(surf.get_size()) / 2.0)
-        pygame.draw.line(win, (255,0,0), self.pos, self.pos + self.spin_dir * 20)
+        # pygame.draw.line(win, (255,0,0), self.pos, self.pos + self.vel_direction * 20)
 
     def draw_solid(self):
         win.blit(self.surf, self.pos - Vector2(Ball._radius, Ball._radius))
