@@ -12,7 +12,6 @@ from Physics import Ball, Line, Hole, CueBall
 from Calc import *
 from StateMachine import *
 import Cpu
-from Cpu import PlayerCpu
 import Guide
 from Guide import AimGuide
 
@@ -27,7 +26,7 @@ class PoolGame:
         self.pool_line = 450
         self.table_dims = None
         self.game_state = None
-        self.cpus: List[PlayerCpu] = []
+        self.cpus: List[Cpu.PlayerCpu] = []
         self.rules = rules
 
         self.table_center = Vector2(win.get_width() / 2, win.get_height() / 2)
@@ -40,12 +39,20 @@ class PoolGame:
         self.build_table()
         self.build_balls()
         
-        self.game_state = GameState(self.table_dims)
+        match self.rules:
+            case Rules.EIGHT_BALL:
+                self.game_state = GameStateEightBall(self.table_dims)
+            case Rules.SNOOKER:
+                self.game_state = GameStateSnooker(self.table_dims)
 
         for key in self.cpu_config:
             player_type, dificulty = self.cpu_config[key]
             if player_type == Player_Type.CPU:
-                cpu_player = PlayerCpu(self.game_state, key, dificulty=dificulty)
+                match self.rules:
+                    case Rules.EIGHT_BALL:
+                        cpu_player = Cpu.PlayerCpuEightBall(self.game_state, key, dificulty=dificulty)
+                    case Rules.SNOOKER:
+                        cpu_player = Cpu.PlayerCpuSnooker(self.game_state, key, dificulty=dificulty)
                 self.cpus.append(cpu_player)
 
         self.guide = AimGuide(self.game_state, [cpu.player for cpu in self.cpus])
@@ -136,7 +143,7 @@ class PoolGame:
     def build_balls(self):
         # build balls
         match self.rules:
-            case Rules.BALL_8:
+            case Rules.EIGHT_BALL:
                 numbers = [1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15]
                 shuffle(numbers)
 
@@ -157,7 +164,7 @@ class PoolGame:
                 ball_pos = Vector2(self.table_center[0] - self.pool_line * 0.5, self.table_center[1])
                 CueBall(ball_pos)
 
-            case Rules.BALL_9:
+            case Rules.NINE_BALL:
                 numbers = [2, 3, 4, 5, 6, 7, 8]
                 shuffle(numbers)
 
@@ -186,8 +193,8 @@ class PoolGame:
                 offx = self.table_center[0] + self.pool_line * 0.5 - 2 * Ball._radius
                 offy = self.table_center[1] + Ball._radius
 
-                zero_pos = None
-                last_pos = None
+                self.table_zero_pos = None
+                self.table_last_pos = None
 
                 ball_count = 0
                 for i in range(6):
@@ -195,9 +202,9 @@ class PoolGame:
                         number = 101
                         ball_pos = Vector2(Ball._radius * i * sqrt(3) + offx, Ball._radius * j + offy)
                         if ball_count == 0:
-                            zero_pos = ball_pos
+                            self.table_zero_pos = ball_pos.copy()
                         if ball_count == 12:
-                            last_pos = ball_pos
+                            self.table_last_pos = ball_pos.copy()
                         Ball(ball_pos, number=number)
                         ball_count += 1
                 
@@ -205,11 +212,28 @@ class PoolGame:
                 Ball(self.table_center - (self.pool_line * 0.5, self.pool_line * 0.25), number=103)
                 Ball(self.table_center - (self.pool_line * 0.5, 0), number=104)
                 Ball(Vector2(self.table_center), number=105)
-                Ball(zero_pos + Vector2(-Ball._radius * 2, 0), number=106)
-                Ball(last_pos + Vector2(Ball._radius * 4, 0), number=107)
+                Ball(self.table_zero_pos + Vector2(-Ball._radius * 2, 0), number=106)
+                Ball(self.table_last_pos + Vector2(Ball._radius * 4, 0), number=107)
 
                 ball_pos = Vector2(self.table_center[0] - self.pool_line * 0.5 - Ball._radius * 4, self.table_center[1])
                 CueBall(ball_pos)
+
+    def respot_balls(self):
+        respot_balls = self.game_state.get_respot()
+        for ball in respot_balls:
+            match ball:
+                case BallType.SNOOKER_YELLOW:
+                    Ball(self.table_center - (self.pool_line * 0.5, -self.pool_line * 0.25), number=102)
+                case BallType.SNOOKER_GREEN:
+                    Ball(self.table_center - (self.pool_line * 0.5, self.pool_line * 0.25), number=103)
+                case BallType.SNOOKER_BROWN:
+                    Ball(self.table_center - (self.pool_line * 0.5, 0), number=104)
+                case BallType.SNOOKER_BLUE:
+                    Ball(Vector2(self.table_center), number=105)
+                case BallType.SNOOKER_PINK:
+                    Ball(self.table_zero_pos + Vector2(-Ball._radius * 2, 0), number=106)
+                case BallType.SNOOKER_BLACK:
+                    Ball(self.table_last_pos + Vector2(Ball._radius * 4, 0), number=107)
 
     def main_loop(self):
         win = self.win
@@ -229,6 +253,11 @@ class PoolGame:
                             cpu.debug = not cpu.debug
                     if event.key == pygame.K_s:
                         Physics.draw_solids = not Physics.draw_solids
+                    if event.key == pygame.K_DELETE:
+                        mouse_pos = Vector2(pygame.mouse.get_pos())
+                        for ball in Ball._reg:
+                            if ball.pos.distance_to(mouse_pos) < Ball._radius:
+                                ball.potted()
                 if event.type == pygame.KEYUP:
                     debug_move_ball = None
                 if self.game_state.get_state() == State.PLAY:
@@ -265,10 +294,11 @@ class PoolGame:
                 hole.step()
             if self.game_state.get_state() == State.WAIT_FOR_STABLE:
                 if Ball.check_stability():
-                    # determine next turn
+                    # game stable, determine next turn
                     self.game_state.update_potted(Ball._cue_ball.get_potted_this_turn())
                     self.game_state.first_touch = Ball._cue_ball.get_first_touch()
                     self.game_state.update()
+                    self.respot_balls()
                     Ball._cue_ball.new_turn()
             
             for cpu in self.cpus:
@@ -303,10 +333,7 @@ class PoolGame:
                 win.blit(ball.surf, pos)
 
             # temporarily display info
-            if self.game_state.get_state() != State.GAME_OVER:
-                text = f'{str(self.game_state.get_player())}: {self.game_state.player_ball_type[self.game_state.get_player()]}'
-            else:
-                text = f'Game Over, {self.game_state.player_winner} Won'
+            text = self.game_state.get_info()
             player_turn_surf = font1.render(text, True, (255,255,255))
             win.blit(player_turn_surf, (10,10))
 
@@ -319,7 +346,7 @@ if __name__ == '__main__':
     pygame.init()
     win = pygame.display.set_mode((1280, 800))
     clock = pygame.time.Clock()
-
+ 
     font1 = pygame.font.SysFont('Arial', 16)
 
     Physics.win = win
@@ -329,10 +356,10 @@ if __name__ == '__main__':
 
     cpu_config = {
         Player.PLAYER_1: (Player_Type.HUMAN, 3),
-        Player.PLAYER_2: (Player_Type.HUMAN, 2),
+        Player.PLAYER_2: (Player_Type.CPU, 3),
     }
 
-    game = PoolGame(Rules.BALL_8, cpu_config=cpu_config, win=win, clock=clock)
+    game = PoolGame(Rules.SNOOKER, cpu_config=cpu_config, win=win, clock=clock)
     game.initialize()
     game.main_loop()
 

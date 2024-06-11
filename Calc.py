@@ -48,7 +48,7 @@ def closest_point_on_line(point_a: Vector2, point_b: Vector2, point_target: Vect
     ab = point_b - point_a
     ac = point_target - point_a
     if ab.dot(ab) == 0:
-        print(1)
+        return None
     t = ac.dot(ab) / ab.dot(ab)
     if t > 1.0 or t < 0.0:
         return None
