@@ -5,6 +5,7 @@ Main module
 import pygame
 from pygame.math import Vector2
 import os
+import asyncio
 from random import shuffle, choice
 from typing import Dict, Tuple, List
 import Physics
@@ -14,11 +15,12 @@ from StateMachine import *
 import Cpu
 import Guide
 from Guide import AimGuide
+from Client import Client
 
 DEBUG = False
 
 class PoolGame:
-    def __init__(self, rules: Rules, cpu_config: Dict[Player, Tuple[Player_Type, int]], win: pygame.Surface, clock: pygame.time.Clock):
+    def __init__(self, rules: Rules, cpu_config: Dict[Player, Tuple[Player_Type, int]], win: pygame.Surface, clock: pygame.time.Clock, online: bool=False):
         self.win = win
         self.clock = clock
 
@@ -34,6 +36,8 @@ class PoolGame:
             self.table_center + Vector2(300, 0),
             self.table_center + Vector2(-300, 0),
             ]
+    
+        self.online = online
 
     def initialize(self):
         self.build_table()
@@ -58,7 +62,6 @@ class PoolGame:
         self.guide = AimGuide(self.game_state, [cpu.player for cpu in self.cpus])
 
         self.load_sprites()
-
 
     def load_sprites(self):
         # load sprites
@@ -264,6 +267,17 @@ class PoolGame:
                     if event.type == pygame.MOUSEBUTTONUP:
                         if event.button == 1:
                             direction, power = self.guide.get_aim_power()
+
+                            # data for sending
+                            message = {
+                                'action': 'strike',
+                                'direction': {
+                                    'x': direction.x,
+                                    'y': direction.y
+                                },
+                                'power': power
+                            }
+
                             Ball._cue_ball.strike(direction, power)
                             self.game_state.update()
                 elif self.game_state.get_state() == State.MOVING_CUE_BALL:
@@ -340,6 +354,30 @@ class PoolGame:
             pygame.display.update()
             clock.tick(60)
 
+    def start_game(self):
+        if not self.online:
+            self.main_loop()
+        
+        else:
+            asyncio.run(self.main_loop_online())
+
+
+    async def main_loop_online(self):
+        # create client
+        self.client = Client()
+
+        await self.client.start('localhost', 8000)
+
+        # call server to determine my spot
+        response = await self.client.listen()
+        print(response)
+
+        # call server to wait for start
+        response = await self.client.listen()
+        print(response)
+    
+
+
 
 if __name__ == '__main__':
 
@@ -356,12 +394,14 @@ if __name__ == '__main__':
 
     cpu_config = {
         Player.PLAYER_1: (Player_Type.HUMAN, 3),
-        Player.PLAYER_2: (Player_Type.CPU, 3),
+        Player.PLAYER_2: (Player_Type.HUMAN, 3),
     }
 
-    game = PoolGame(Rules.SNOOKER, cpu_config=cpu_config, win=win, clock=clock)
+    online = True
+
+    game = PoolGame(Rules.SNOOKER, cpu_config=cpu_config, win=win, clock=clock, online=online)
     game.initialize()
-    game.main_loop()
+    game.start_game()
 
     pygame.quit()
     
