@@ -75,7 +75,7 @@ class Ball:
             Ball._reg.append(self)
         self.number = number
         self.create_surf()
-        if not self.is_fake: print(f'--- placing ball {self.get_type()} in position {self.pos}')
+        # if not self.is_fake: print(f'--- placing ball {self.get_type()} in position {self.pos}')
     
     def __str__(self):
         if self.is_fake:

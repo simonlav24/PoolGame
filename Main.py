@@ -6,6 +6,7 @@ import pygame
 from pygame.math import Vector2
 import os
 import asyncio
+import random
 from random import shuffle, choice
 from typing import Dict, Tuple, List
 import Physics
@@ -16,6 +17,7 @@ import Cpu
 import Guide
 from Guide import AimGuide
 from Client import Client
+from Models import *
 
 DEBUG = False
 
@@ -38,6 +40,7 @@ class PoolGame:
             ]
     
         self.online = online
+        self.online_player: Player = Player.PLAYER_1
 
     def initialize(self):
         self.build_table()
@@ -79,7 +82,6 @@ class PoolGame:
         
         if not self.sprites_loaded:
             Physics.draw_solids = True
-
 
     def build_table(self):
         # build table
@@ -142,7 +144,6 @@ class PoolGame:
         Hole(Vector2(center, top - vertical_adjust), Vector2(0, hole_vertical_offset), hole_radius)
         Hole(Vector2(center, bottom + vertical_adjust), Vector2(0, -hole_vertical_offset), hole_radius)
     
-
     def build_balls(self):
         # build balls
         match self.rules:
@@ -266,6 +267,7 @@ class PoolGame:
                 if self.game_state.get_state() == State.PLAY:
                     if event.type == pygame.MOUSEBUTTONUP:
                         if event.button == 1:
+                            
                             direction, power = self.guide.get_aim_power()
 
                             # data for sending
@@ -354,15 +356,156 @@ class PoolGame:
             pygame.display.update()
             clock.tick(60)
 
+    async def main_loop_online(self):
+
+        win = self.win
+        clock = self.clock
+        debug_move_ball = None
+
+        done = False
+        while not done:
+            # --- Main event loop
+            for event in pygame.event.get():
+                self.guide.handle_event(event)
+                if event.type == pygame.QUIT:
+                    done = True
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_c:
+                        # cpu debug
+                        for cpu in self.cpus:
+                            cpu.debug = not cpu.debug
+                    if event.key == pygame.K_s:
+                        # darw solids for debug
+                        Physics.draw_solids = not Physics.draw_solids
+                    if event.key == pygame.K_DELETE:
+                        # delete ball for debug
+                        mouse_pos = Vector2(pygame.mouse.get_pos())
+                        for ball in Ball._reg:
+                            if ball.pos.distance_to(mouse_pos) < Ball._radius:
+                                ball.potted()
+                if event.type == pygame.KEYUP:
+                    debug_move_ball = None
+                if self.game_state.get_state() == State.PLAY:
+                    if self.game_state.get_player() == self.online_player:
+
+                        if event.type == pygame.MOUSEBUTTONUP:
+                            if event.button == 1:
+                                
+                                direction, power = self.guide.get_aim_power()
+                                
+                                # prepare message strike
+                                print('Striking')
+                                message = StrikeMessage(id=self.client.id, message={
+                                    'x': direction.x,
+                                    'y': direction.y,
+                                    'power': power
+                                    })
+                                # send message
+                                await self.client.send(message)
+
+                                Ball._cue_ball.strike(direction, power)
+                                self.game_state.update()
+                    else:
+                        # listen to messages
+                        message = None
+                        try:
+                            message = await asyncio.wait_for(self.client.listen(), timeout=0.01)
+                        except asyncio.TimeoutError:
+                            pass
+                        
+                        if message is not None:
+                            print('received a message!!!')
+                            if message.action == Action.STRIKE:
+                                direction = Vector2(message.message.x, message.message.y)
+                                power = message.message.power
+                                Ball._cue_ball.strike(direction, power)
+                                self.game_state.update()
+
+                elif self.game_state.get_state() == State.MOVING_CUE_BALL:
+                    if event.type == pygame.MOUSEBUTTONUP:
+                        if event.button == 1:
+                            if Ball._cue_ball.is_out:
+                                Ball._cue_ball = CueBall(pygame.mouse.get_pos())
+                            else:
+                                Ball._cue_ball.set_pos(pygame.mouse.get_pos())
+                            self.game_state.update()
+            
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_ESCAPE]:
+                done = True
+
+            if keys[pygame.K_m]:
+                mouse_pos = Vector2(pygame.mouse.get_pos())
+                if debug_move_ball:
+                    debug_move_ball.pos = mouse_pos
+                else:
+                    for ball in Ball._reg:
+                        if ball.pos.distance_to(mouse_pos) < Ball._radius:
+                            debug_move_ball = ball
+
+            # step
+            Ball.step_balls()
+            for hole in Hole._reg:
+                hole.step()
+            if self.game_state.get_state() == State.WAIT_FOR_STABLE:
+                if Ball.check_stability():
+                    # game stable, determine next turn
+                    self.game_state.update_potted(Ball._cue_ball.get_potted_this_turn())
+                    self.game_state.first_touch = Ball._cue_ball.get_first_touch()
+                    self.game_state.update()
+                    self.respot_balls()
+                    Ball._cue_ball.new_turn()
+            
+            for cpu in self.cpus:
+                cpu.step()
+                if cpu.player == self.game_state.get_player():
+                    self.guide.set_aim(cpu.get_direction())
+            
+            # draw
+            win.fill((30, 30, 30))
+            if self.sprites_loaded:
+                win.blit(self.table_border_sprite, (self.table_center[0] - self.table_border_sprite.get_width() / 2, self.table_center[1] - self.table_border_sprite.get_height() / 2))
+                win.blit(self.table_top_sprite, (self.table_center[0] - self.table_top_sprite.get_width() / 2, self.table_center[1] - self.table_top_sprite.get_height() / 2))
+
+            for hole in Hole._reg:
+                hole.draw()
+            Ball.draw_balls()
+            Line.draw_lines()
+
+            for cpu in self.cpus:
+                cpu.draw()
+
+            # draw guides
+            if self.game_state.get_state() == State.PLAY:
+                self.guide.draw()
+            
+            if self.game_state.get_state() == State.MOVING_CUE_BALL:
+                pygame.draw.circle(win, (255,255,255), pygame.mouse.get_pos(), Ball._radius, 1)
+
+            # draw entered balls
+            for i, ball in enumerate(Ball._entered_balls):
+                pos = Vector2(self.table_dims['right'] + Ball._radius * 8, Ball._radius + i * 2 * Ball._radius)
+                win.blit(ball.surf, pos)
+
+            # temporarily display info
+            text = f'{self.online_player}          ' + self.game_state.get_info()
+            player_turn_surf = font1.render(text, True, (255,255,255))
+            win.blit(player_turn_surf, (10,10))
+
+            pygame.display.update()
+            clock.tick(60)
+
     def start_game(self):
+
         if not self.online:
+            self.initialize()
             self.main_loop()
         
         else:
-            asyncio.run(self.main_loop_online())
+            asyncio.run(self.start_online_game())
 
 
-    async def main_loop_online(self):
+    async def start_online_game(self):
         # create client
         self.client = Client()
 
@@ -370,12 +513,26 @@ class PoolGame:
 
         # call server to determine my spot
         response = await self.client.listen()
-        print(response)
+        print(0)
+        self.online_player = response.message
+        print('im player', self.online_player)
 
         # call server to wait for start
         response = await self.client.listen()
+        seed = response.message
+        random.seed(seed)
         print(response)
-    
+
+        self.initialize()
+        await self.main_loop_online()
+
+
+
+
+
+
+
+        
 
 
 
@@ -399,8 +556,7 @@ if __name__ == '__main__':
 
     online = True
 
-    game = PoolGame(Rules.SNOOKER, cpu_config=cpu_config, win=win, clock=clock, online=online)
-    game.initialize()
+    game = PoolGame(Rules.EIGHT_BALL, cpu_config=cpu_config, win=win, clock=clock, online=online)
     game.start_game()
 
     pygame.quit()

@@ -4,53 +4,47 @@ import json
 import asyncio
 import websockets as ws
 from typing import Set, Tuple, Dict
-from StateMachine import Player
+from Models import *
+from random import randint
 
 class Server:
     def __init__(self) -> None:
         self.clients: Set[ws.WebSocketServerProtocol] = set()
-        self.event_queue: asyncio.Queue[Tuple[ws.WebSocketServerProtocol, Dict]] = asyncio.Queue()
+        self.event_queue: asyncio.Queue[Tuple[ws.WebSocketServerProtocol, Message]] = asyncio.Queue()
 
     async def start(self, host: str, port: int):
         ''' start server '''
         print('why are you running?')
-        async with ws.serve(self.handle_connection, host, port):
+        async with ws.serve(self.handle_connection, host, port, open_timeout=10000000000, close_timeout=10000000000):
             # await asyncio.Future()
             try:
                 while True:
                     sender, event = await self.event_queue.get()
-
                     message = await self.handle_event(sender, event)
-                    
-                    # print('broadcasting message')
-                    # await self.broadcast(sender, event)
+
             except KeyboardInterrupt:
                 pass
 
-    async def handle_event(self, sender: ws.WebSocketServerProtocol, event: str):
-        event = json.loads(event)
-        action = event['action']
+    async def handle_event(self, sender: ws.WebSocketServerProtocol, event: Message):
         respone = None
 
-        print(f'handling event action: {action}')
+        print(f'handling event action: {event.action}')
 
-        if action == 'enter game':
+        if event.action == Action.JOIN:
+            print('inn')
             if len(self.clients) == 1:
-                respone = {
-                    'action': 'player spot',
-                    'message': '1'
-                }
+                response = PlayerSpotMessage(message=Player.PLAYER_1, player_type=Player_Type.HUMAN)
             else:
-                respone = {
-                    'action': 'player spot',
-                    'message': '2'
-                }
-            await sender.send(json.dumps(respone))
+                response = PlayerSpotMessage(message=Player.PLAYER_2, player_type=Player_Type.HUMAN)
+            print('preparing to send', response.model_dump_json())
+            await sender.send(response.model_dump_json())
             if len(self.clients) == 2:
-                game_start_message = {
-                    'action': 'game start'
-                }
-                await self.broadcast(None, json.dumps(game_start_message))
+                print('preparing to send PLAY')
+                response = Message(message=randint(0, 10000), action=Action.GAME_START)
+                await self.broadcast(None, response.model_dump_json())
+        
+        elif event.action == Action.STRIKE:
+            await self.broadcast(sender, event.model_dump_json())
         
         return respone
 
@@ -76,7 +70,13 @@ class Server:
     async def handle_message(self, client, message):
         print(message)
     
-    async def add_event(self, event):
+    async def add_event(self, event: Tuple[ws.WebSocketServerProtocol, str]):
+        client, message = event
+        message_type = json.loads(message)['action']
+        action = Action(message_type)
+        message_model = ACTION_TO_MESSAGE[action]
+        event = (client, message_model.model_validate_json(message))
+
         await self.event_queue.put(event)
     
     async def broadcast(self, client_sender, message):

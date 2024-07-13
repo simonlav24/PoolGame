@@ -5,29 +5,19 @@ import asyncio
 import websockets as ws
 import uuid
 from StateMachine import Player
+from Models import *
 
 class Client:
     def __init__(self) -> None:
-        self.id = uuid.uuid1()
+        self.id = str(uuid.uuid1())
         self.client = None
         self.event_queue = asyncio.Queue()
     
     async def start(self, host, port):
         await self.connect(host, port)
 
-        message = {
-            'id': str(self.id),
-            'action': 'enter game',
-            'message': 'yo i want to pool'
-        }
+        message = Message(id=str(self.id), action=Action.JOIN)
         await self.send(message)
-
-        
-
-        # async with ws.connect(f'ws://{host}:{port}') as client:
-        #     self.client = client
-        #     await self.send_hello()
-        # self.client = None
 
     async def connect(self, host, port):
         self.client = await ws.connect(f'ws://{host}:{port}')
@@ -35,22 +25,21 @@ class Client:
     async def disconnect(self):
         self.client.close()
 
-    async def send(self, message):
+    async def send(self, message: Message):
         print('sending message')
-        await self.client.send(json.dumps(message))
+        await self.client.send(message.model_dump_json())
 
-    async def listen(self):
-        print('[client] listening')
-        response = await self.client.recv()
-        print(f'[client] {response}')
-        return response
+    async def listen(self) -> Message:
+        message = await self.client.recv()
 
-    async def send_hello(self):
-        message = {
-            'id': '123',
-            'message': f'yo sup. me name in {self.id}'
-        }
-        await self.client.send(json.dumps(message))
+        print('received message from server')
+        message_type = json.loads(message)['action']
+        action = Action(message_type)
+        message_model = ACTION_TO_MESSAGE[action]
+
+        print(f'[client] {message_model}')
+        print(f'[client]', message_model.model_validate_json(message))
+        return message_model.model_validate_json(message)
 
 async def main():
     host = 'localhost'

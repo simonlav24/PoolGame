@@ -111,6 +111,8 @@ class Rules(Enum):
     SNOOKER = 2
     RUSSIAN = 3
 
+
+
 class GameState:
     def __init__(self, table_dims):
         self.current_state: State = State.PLAY
@@ -141,6 +143,7 @@ class GameState:
         return self.current_state
     
     def get_player(self) -> Player:
+        ''' return current player's turn '''
         return self.player_turn
     
     def update(self):
