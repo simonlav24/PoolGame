@@ -364,7 +364,20 @@ class PoolGame:
 
         done = False
         while not done:
-            # --- Main event loop
+            # handle message queue
+            message = await self.client.listen(0.1)
+
+            if message is not None:
+                print('handling message')
+                if message.action == Action.STRIKE:
+                    print('Strike message received')
+                    direction = Vector2(message.message.x, message.message.y)
+                    power = message.message.power
+                    Ball._cue_ball.strike(direction, power)
+                    self.game_state.update()
+
+
+            # handle pygame events
             for event in pygame.event.get():
                 self.guide.handle_event(event)
                 if event.type == pygame.QUIT:
@@ -405,21 +418,7 @@ class PoolGame:
 
                                 Ball._cue_ball.strike(direction, power)
                                 self.game_state.update()
-                    else:
-                        # listen to messages
-                        message = None
-                        try:
-                            message = await asyncio.wait_for(self.client.listen(), timeout=0.01)
-                        except asyncio.TimeoutError:
-                            pass
-                        
-                        if message is not None:
-                            print('received a message!!!')
-                            if message.action == Action.STRIKE:
-                                direction = Vector2(message.message.x, message.message.y)
-                                power = message.message.power
-                                Ball._cue_ball.strike(direction, power)
-                                self.game_state.update()
+                    
 
                 elif self.game_state.get_state() == State.MOVING_CUE_BALL:
                     if event.type == pygame.MOUSEBUTTONUP:
@@ -512,13 +511,14 @@ class PoolGame:
         await self.client.start('localhost', 8000)
 
         # call server to determine my spot
-        response = await self.client.listen()
-        print(0)
+        response = await self.client.listen(1)
         self.online_player = response.message
         print('im player', self.online_player)
 
         # call server to wait for start
-        response = await self.client.listen()
+        print('waiting for server to send play 1')
+        response = await self.client.listen(1)
+        print('waiting for server to send play 2')
         seed = response.message
         random.seed(seed)
         print(response)

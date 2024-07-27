@@ -31,7 +31,7 @@ class Server:
         print(f'handling event action: {event.action}')
 
         if event.action == Action.JOIN:
-            print('inn')
+            print('in join action')
             if len(self.clients) == 1:
                 response = PlayerSpotMessage(message=Player.PLAYER_1, player_type=Player_Type.HUMAN)
             else:
@@ -42,8 +42,10 @@ class Server:
                 print('preparing to send PLAY')
                 response = Message(message=randint(0, 10000), action=Action.GAME_START)
                 await self.broadcast(None, response.model_dump_json())
+                print('sent')
         
         elif event.action == Action.STRIKE:
+            print('Server received STRIKE action')
             await self.broadcast(sender, event.model_dump_json())
         
         return respone

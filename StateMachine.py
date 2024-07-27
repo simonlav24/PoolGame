@@ -227,8 +227,8 @@ class GameStateSnooker(GameState):
                 advance_turn = True
                 foul = Foul.NONE
 
-                print(f'{self.first_touch=}')
-                print(f'{self.potted_this_turn=}')
+                # print(f'{self.first_touch=}')
+                # print(f'{self.potted_this_turn=}')
 
                 # determine state cases
                 self.inner_state_end_of_turn = SnookerInnerState.SNOOKER_RED_ON
@@ -335,7 +335,8 @@ class GameStateSnooker(GameState):
 
                 # resolve foul
                 if foul != Foul.NONE:
-                    print(f'{self.get_player()}, foul:{foul}')
+                    # print(f'{self.get_player()}, foul:{foul}')
+                    ...
                 match foul:
                     case Foul.POTTED_CUE:
                         next_state = State.MOVING_CUE_BALL
@@ -350,7 +351,7 @@ class GameStateSnooker(GameState):
 
                 if advance_turn:
                     self.player_turn = self.player_turn.next()
-                print(f'State: {next_state}, turn: {self.player_turn}, score: {self.score}')
+                # print(f'State: {next_state}, turn: {self.player_turn}, score: {self.score}')
                 self.round_count += 1
 
             case State.MOVING_CUE_BALL:
@@ -360,7 +361,7 @@ class GameStateSnooker(GameState):
                 next_state = State.GAME_OVER
         
         self.current_state = next_state
-        print(f'--------------End of turn, state: {self.inner_state}')
+        # print(f'--------------End of turn, state: {self.inner_state}')
 
 class GameStateEightBall(GameState):
     def update_potted(self, potted: List[BallType]):
@@ -398,8 +399,8 @@ class GameStateEightBall(GameState):
                 ## player turn shall change if
                 ## 1. player didnt touch any of his balls first
                 ## 2. player potted cue or black
-                print(f'{self.first_touch=}')
-                print(f'{self.potted_this_turn=}')
+                # print(f'{self.first_touch=}')
+                # print(f'{self.potted_this_turn=}')
 
                 # check first touch
                 if self.player_determined:
@@ -410,7 +411,7 @@ class GameStateEightBall(GameState):
 
                     if self.first_touch not in allowed_first_touch:
                         # foul: touched illegal ball
-                        print('foul, touched illegal ball')
+                        # print('foul, touched illegal ball')
                         foul = Foul.TOUCHED_ILLEGAL_BALL
 
                 if len(self.potted_this_turn) != 0:
@@ -429,7 +430,7 @@ class GameStateEightBall(GameState):
 
                     if BallType.BALL_CUE in self.potted_this_turn:
                         # foul: potted cue ball
-                        print('foul, potted cue ball')
+                        # print('foul, potted cue ball')
                         foul = Foul.POTTED_CUE
                     
                     if BallType.BALL_BLACK in self.potted_this_turn:
@@ -447,7 +448,7 @@ class GameStateEightBall(GameState):
                             # foul black potted, other player won 
                             self.player_winner = self.get_player().next()
                             foul = Foul.POTTED_BLACK
-                        print(f'{self.player_winner} Wins')
+                        # print(f'{self.player_winner} Wins')
                 
                 if foul != Foul.NONE:
                     next_state = State.MOVING_CUE_BALL
@@ -456,7 +457,7 @@ class GameStateEightBall(GameState):
                         next_state = State.GAME_OVER
                 if advance_turn:
                     self.player_turn = self.player_turn.next()
-                print(f'State: {next_state}, score: {self.score}')
+                # print(f'State: {next_state}, score: {self.score}')
                 self.round_count += 1
 
             case State.MOVING_CUE_BALL:
