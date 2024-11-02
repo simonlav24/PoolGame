@@ -2,6 +2,7 @@ from typing import Dict, Any, Optional, Type
 from enum import Enum
 import json
 from pydantic import BaseModel
+from Definitions import PlayerSpot
 
 class EventType(str, Enum):
     MESSAGE = "MESSAGE"
@@ -26,10 +27,16 @@ class PlayerType(str, Enum):
     SPECTATOR = "SPECTATOR"
     AI = "AI"
 
-class PlayerSpot(str, Enum):
-    PLAYER1 = "PLAYER1"
-    PLAYER2 = "PLAYER2"
+# class PlayerSpot(str, Enum):
+#     PLAYER1 = "PLAYER1"
+#     PLAYER2 = "PLAYER2"
 
+    def next(self):
+        members = list(self.__class__)
+        index = members.index(self)
+        next_index = (index + 1) % len(members)
+        return members[next_index]
+    
 class Payload(BaseModel):
     pass
 

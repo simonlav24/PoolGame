@@ -3,13 +3,13 @@ import asyncio
 import json
 import uuid
 import websockets as ws
-from events import (
+from network.events import (
     Status,
     Event,
-    PlayerSpot,
     EventType,
     EventFactory
 )
+from Definitions import PlayerSpot
 
 class GameClient:
     def __init__(self):
@@ -25,6 +25,7 @@ class GameClient:
         
     async def send_event(self, event: Event):
         message = event.model_dump_json()
+        print(f'client send event: {message=}')
         await self.websocket.send(message)
 
     async def join_server(self) -> PlayerSpot:
@@ -85,7 +86,12 @@ class GameClient:
             return None
 
     def run(self) -> Tuple[PlayerSpot, int]:
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
         # connect to the server
         loop.run_until_complete(self.connect("ws://localhost:6789"))
         # join the server

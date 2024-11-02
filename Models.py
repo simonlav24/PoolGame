@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 from pydantic import BaseModel
-from StateMachine import Player, Player_Type
+from StateMachine import PlayerSpot, Player_Type
 from enum import Enum
 from typing import Any, Optional, DefaultDict, Type
 from collections import defaultdict
@@ -21,7 +21,7 @@ class Message(BaseModel):
     message: Optional[Any] = None
 
 class PlayerSpotMessage(Message):
-    message: Player
+    message: PlayerSpot
     player_type: Player_Type
     action: Optional[Action] = Action.PLAYER_SPOT
 

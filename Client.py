@@ -4,7 +4,7 @@ import json
 import asyncio
 import websockets as ws
 import uuid
-from StateMachine import Player
+from StateMachine import PlayerSpot
 from Models import *
 
 SENTINEL = None

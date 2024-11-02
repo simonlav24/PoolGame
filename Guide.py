@@ -1,5 +1,5 @@
 
-from StateMachine import GameState, State, Player
+from StateMachine import GameState, State, PlayerSpot
 from typing import Tuple, List
 from Physics import Ball, Line
 from Calc import find_collision_centers_on_line, find_collision_position_ball_to_line
@@ -10,7 +10,7 @@ from math import radians
 win = None
 
 class AimGuide:
-    def __init__(self, game_state: GameState, cpu_players: List[Player]):
+    def __init__(self, game_state: GameState, cpu_players: List[PlayerSpot]):
         self.powering = False
         self.aim_vec: Vector2 = None
         self.power_origin: Vector2 = None

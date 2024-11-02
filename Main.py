@@ -16,13 +16,18 @@ from StateMachine import *
 import Cpu
 import Guide
 from Guide import AimGuide
-from Client import Client
+from network.client import GameClient
+from network.events import (
+    EventFactory,
+    EventType, 
+    StrikePayload,
+    Event)
 from Models import *
 
 DEBUG = False
 
 class PoolGame:
-    def __init__(self, rules: Rules, cpu_config: Dict[Player, Tuple[Player_Type, int]], win: pygame.Surface, clock: pygame.time.Clock, online: bool=False):
+    def __init__(self, rules: Rules, cpu_config: Dict[PlayerSpot, Tuple[Player_Type, int]], win: pygame.Surface, clock: pygame.time.Clock, online: bool=False):
         self.win = win
         self.clock = clock
 
@@ -40,7 +45,7 @@ class PoolGame:
             ]
     
         self.online = online
-        self.online_player: Player = Player.PLAYER_1
+        self.online_player: PlayerSpot = PlayerSpot.PLAYER1
 
     def initialize(self):
         self.build_table()
@@ -356,6 +361,15 @@ class PoolGame:
             pygame.display.update()
             clock.tick(60)
 
+    def prepare_message(self, event_type: EventType, payload_data: Optional[Dict[str, Any]]=None) -> Event:
+        if not payload_data:
+            payload_data = {}
+
+        payload_class = EventFactory.get_payload_model(event_type)
+        payload = payload_class(**payload_data)
+        event = EventFactory.create_event(event_type, payload, sender_id=self.client.player_id)
+        return event
+
     async def main_loop_online(self):
 
         win = self.win
@@ -365,15 +379,15 @@ class PoolGame:
         done = False
         while not done:
             # handle message queue
-            message = await self.client.listen(0.1)
+            event = await self.client.get_event(0.01)
 
-            if message is not None:
-                print('handling message')
-                if message.action == Action.STRIKE:
-                    print('Strike message received')
-                    direction = Vector2(message.message.x, message.message.y)
-                    power = message.message.power
-                    Ball._cue_ball.strike(direction, power)
+            if event is not None:
+                print('handling event')
+                if event.event_type == EventType.STRIKE:
+                    print('Strike event received')
+                    payload: StrikePayload = event.payload
+                    direction = Vector2(payload.x, payload.y)
+                    Ball._cue_ball.strike(direction, payload.power)
                     self.game_state.update()
 
 
@@ -405,16 +419,20 @@ class PoolGame:
                             if event.button == 1:
                                 
                                 direction, power = self.guide.get_aim_power()
-                                
                                 # prepare message strike
-                                print('Striking')
-                                message = StrikeMessage(id=self.client.id, message={
+                                
+                                payload_data = {
                                     'x': direction.x,
                                     'y': direction.y,
-                                    'power': power
-                                    })
+                                    'power': power,
+                                    'player_id': self.client.player_id
+                                }
+                                
+                                event = self.prepare_message(EventType.STRIKE, payload_data)
+
+                                print('Striking')
                                 # send message
-                                await self.client.send(message)
+                                await self.client.send_event(event)
 
                                 Ball._cue_ball.strike(direction, power)
                                 self.game_state.update()
@@ -495,7 +513,6 @@ class PoolGame:
             clock.tick(60)
 
     def start_game(self):
-
         if not self.online:
             self.initialize()
             self.main_loop()
@@ -505,35 +522,26 @@ class PoolGame:
 
 
     async def start_online_game(self):
+        self.client = GameClient()
+        try:
+            spot, seed = self.client.run()
+            print(f"Joined as {spot} with seed {seed}")
+        except Exception as e:
+            print(e)
+        finally:
+            asyncio.get_event_loop().run_until_complete(self.client.close())   
+
         # create client
-        self.client = Client()
-
-        await self.client.start('localhost', 8000)
-
+        # self.client = GameClient()
+        # spot, seed = self.client.run()
+        
         # call server to determine my spot
-        response = await self.client.listen(1)
-        self.online_player = response.message
+        self.online_player: PlayerSpot = spot
         print('im player', self.online_player)
 
-        # call server to wait for start
-        print('waiting for server to send play 1')
-        response = await self.client.listen(1)
-        print('waiting for server to send play 2')
-        seed = response.message
         random.seed(seed)
-        print(response)
-
         self.initialize()
         await self.main_loop_online()
-
-
-
-
-
-
-
-        
-
 
 
 if __name__ == '__main__':
@@ -550,8 +558,8 @@ if __name__ == '__main__':
     Guide.win = win
 
     cpu_config = {
-        Player.PLAYER_1: (Player_Type.HUMAN, 3),
-        Player.PLAYER_2: (Player_Type.HUMAN, 3),
+        PlayerSpot.PLAYER1: (Player_Type.HUMAN, 3),
+        PlayerSpot.PLAYER2: (Player_Type.HUMAN, 3),
     }
 
     online = True

@@ -3,7 +3,8 @@ import asyncio
 import json
 import random
 import websockets as ws
-from events import EventType, Event, Status, PlayerSpot, PlayerType, EventFactory
+from network.events import EventType, Event, Status, PlayerType, EventFactory
+from Definitions import PlayerSpot
 
 class GameServer:
     def __init__(self):
@@ -79,7 +80,9 @@ class GameServer:
                 await self.send_event(client, response)
 
     async def send_event(self, client: ws.WebSocketServerProtocol, event: Event) -> None:
+        
         if client in self.clients:
+            print(f'send_event: {event=}')
             await client.send(event.model_dump_json())
         else:
             print(f"Client {client} is not connected")
@@ -113,6 +116,7 @@ class GameServer:
         loop.run_forever()
 
 def run_server():
+    print('why are you running?')
     server = GameServer()
 
     try:

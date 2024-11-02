@@ -4,6 +4,7 @@ State machine module and rules enforecement
 
 from enum import Enum
 from typing import List
+from Definitions import PlayerSpot
 
 class State(Enum):
     PLAY = 0
@@ -82,24 +83,6 @@ class Player_Type(Enum):
     HUMAN = 0
     CPU = 1
 
-class Player(Enum):
-    PLAYER_1 = 0
-    PLAYER_2 = 1
-
-    def next(self):
-        members = list(self.__class__)
-        index = members.index(self)
-        next_index = (index + 1) % len(members)
-        return members[next_index]
-
-    def __str__(self):
-        if self == Player.PLAYER_1:
-            return 'Player One'
-        return 'Player Two'
-    
-    def __repr__(self):
-        return str(self)
-
 class SnookerInnerState(Enum):
     SNOOKER_RED_ON = 0
     SNOOKER_FREE_BALL = 1
@@ -111,16 +94,14 @@ class Rules(Enum):
     SNOOKER = 2
     RUSSIAN = 3
 
-
-
 class GameState:
     def __init__(self, table_dims):
         self.current_state: State = State.PLAY
-        self.player_turn: Player = Player.PLAYER_1
+        self.player_turn: PlayerSpot = PlayerSpot.PLAYER1
 
         self.player_ball_type = {
-            Player.PLAYER_1: None,
-            Player.PLAYER_2: None
+            PlayerSpot.PLAYER1: None,
+            PlayerSpot.PLAYER2: None
         }
         self.player_determined = False
 
@@ -128,11 +109,11 @@ class GameState:
         self.first_touch: BallType = None
 
         self.score = {
-            Player.PLAYER_1: 0,
-            Player.PLAYER_2: 0,
+            PlayerSpot.PLAYER1: 0,
+            PlayerSpot.PLAYER2: 0,
         }
 
-        self.player_winner: Player = None
+        self.player_winner: PlayerSpot = None
         self.round_count = 0
         self.table_dims = table_dims
 
@@ -142,7 +123,7 @@ class GameState:
     def get_state(self) -> State:
         return self.current_state
     
-    def get_player(self) -> Player:
+    def get_player(self) -> PlayerSpot:
         ''' return current player's turn '''
         return self.player_turn
     
@@ -172,8 +153,8 @@ class GameStateSnooker(GameState):
         self.current_ball = BallType.SNOOKER_RED
     
     def get_info(self) -> str:
-        text_1 = f'Player 1: score: {self.score[Player.PLAYER_1]}'
-        text_2 = f'Player 2: score: {self.score[Player.PLAYER_2]}'
+        text_1 = f'Player 1: score: {self.score[PlayerSpot.PLAYER1]}'
+        text_2 = f'Player 2: score: {self.score[PlayerSpot.PLAYER2]}'
 
         if self.get_state() == State.GAME_OVER:
             return f'Game Over, {self.player_winner} Won'
@@ -186,7 +167,7 @@ class GameStateSnooker(GameState):
         else:
             target = self.current_ball.to_string()
 
-        if self.get_player() == Player.PLAYER_1:
+        if self.get_player() == PlayerSpot.PLAYER1:
             text_1 += f' <- target {target}'
         else:
             text_2 += f' <- target {target}'
@@ -307,10 +288,10 @@ class GameStateSnooker(GameState):
                                 self.current_ball = self.current_ball.next()
                                 if self.current_ball == BallType.BALL_NONE:
                                     # finished black, game end. winner with the most score
-                                    if self.score[Player.PLAYER_1] > self.score[Player.PLAYER_2]:
-                                        self.player_winner = Player.PLAYER_1
+                                    if self.score[PlayerSpot.PLAYER1] > self.score[PlayerSpot.PLAYER2]:
+                                        self.player_winner = PlayerSpot.PLAYER1
                                     else:
-                                        self.player_winner = Player.PLAYER_2
+                                        self.player_winner = PlayerSpot.PLAYER2
                                     next_state = State.GAME_OVER
 
                 # common

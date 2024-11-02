@@ -1,6 +1,6 @@
 import pygame
 from pygame.math import Vector2
-from StateMachine import GameState, BallType, Player, State, SnookerInnerState
+from StateMachine import GameState, BallType, PlayerSpot, State, SnookerInnerState
 from Physics import Ball, CueBall, Hole
 from Calc import check_line_circle_collision, closest_point_on_line
 from typing import List, Tuple
@@ -10,7 +10,7 @@ win: pygame.surface.Surface = None
 brake_random = Vector2(uniform(-10, 10),100)
 
 class PlayerCpu:
-    def __init__(self, game_state: GameState, player: Player, dificulty = 3):
+    def __init__(self, game_state: GameState, player: PlayerSpot, dificulty = 3):
         self.game_state = game_state
 
         self.targets = []
@@ -282,7 +282,7 @@ class PlayerCpu:
 
 
 class PlayerCpuEightBall(PlayerCpu):
-    def __init__(self, game_state: GameState, player: Player, dificulty=3):
+    def __init__(self, game_state: GameState, player: PlayerSpot, dificulty=3):
         super().__init__(game_state, player, dificulty)
         self.determined = False
         self.ball_type = BallType.BALL_NONE
@@ -307,7 +307,7 @@ class PlayerCpuEightBall(PlayerCpu):
             self.determined = True
 
 class PlayerCpuSnooker(PlayerCpu):
-    def __init__(self, game_state: GameState, player: Player, dificulty=3):
+    def __init__(self, game_state: GameState, player: PlayerSpot, dificulty=3):
 
         super().__init__(game_state, player, dificulty)
 
